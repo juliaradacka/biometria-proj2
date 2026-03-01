@@ -10,12 +10,24 @@ public class ImageMatrix {
     private final int[] argb;
 
     public ImageMatrix(int width, int height) {
+        if (width <= 0 || height <= 0) {
+            throw new IllegalArgumentException("Szerokość i wysokość muszą być nieujemne: szerokość=" + width + ", wysokość=" + height);
+        }
         this.width = width;
         this.height = height;
-        this.argb = new int[width*height];
+        this.argb = new int[width * height];
     }
 
     public ImageMatrix(int width, int height, int[] argb) {
+        if (width <= 0 || height <= 0) {
+            throw new IllegalArgumentException("Szerokość i wysokość muszą być nieujemne: szerokość=" + width + ", wysokość=" + height);
+        }
+        if (argb == null) {
+            throw new IllegalArgumentException("Tablica argb nie może być pusta");
+        }
+        if (argb.length != width * height) {
+            throw new IllegalArgumentException("Długość tablicy argb (" + argb.length + ") nie jest zgodna z width*height (" + (width * height) + ")");
+        }
         this.width = width;
         this.height = height;
         this.argb = argb;
@@ -30,10 +42,22 @@ public class ImageMatrix {
     }
 
     public int getARGB(int x, int y) {
+        if (x < 0 || x >= width || y < 0 || y >= height) {
+            throw new IndexOutOfBoundsException(
+                    "Współrzędne (" + x + ", " + y + ") wykraczają poza granice" +
+                            "(" + width + "x" + height + ")"
+            );
+        }
         return argb[y * width + x];
     }
 
     public void setARGB(int x, int y, int value) {
+        if (x < 0 || x >= width || y < 0 || y >= height) {
+            throw new IndexOutOfBoundsException(
+                    "Współrzędne (" + x + ", " + y + ") wykraczają poza granice" +
+                            "(" + width + "x" + height + ")"
+            );
+        }
         argb[y * width + x] = value;
     }
 

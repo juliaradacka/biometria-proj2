@@ -12,6 +12,7 @@ import java.util.Deque;
 public class EditorService {
 
     private static final int MAX_UNDO_STEPS = 20;
+    private static final int MAX_REDO_STEPS = 20;
 
     private ImageMatrix original;
     private ImageMatrix current;
@@ -43,6 +44,9 @@ public class EditorService {
     public void undo() {
         if (!undoStack.isEmpty()) {
             redoStack.push(current);
+            if (redoStack.size() > MAX_REDO_STEPS) {
+                redoStack.removeLast();
+            }
             current = undoStack.pop();
         }
     }
@@ -50,6 +54,9 @@ public class EditorService {
     public void redo() {
         if (!redoStack.isEmpty()) {
             undoStack.push(current);
+            if (undoStack.size() > MAX_UNDO_STEPS) {
+                undoStack.removeLast();
+            }
             current = redoStack.pop();
         }
     }
@@ -67,7 +74,7 @@ public class EditorService {
     }
 
     public ImageMatrix getOriginal() {
-        return original;
+        return original != null ? original.copy() : null;
     }
 
     public boolean hasImage() {
