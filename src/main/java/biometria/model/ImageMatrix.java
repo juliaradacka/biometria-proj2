@@ -61,12 +61,6 @@ public class ImageMatrix {
         argb[y * width + x] = value;
     }
 
-    public int getARGBClamped(int x, int y) {
-        x = Math.max(0, Math.min(x, width - 1));
-        y = Math.max(0, Math.min(y, height - 1));
-        return argb[y * width + x];
-    }
-
     public ImageMatrix copy() {
         return new ImageMatrix(width, height, argb.clone());
     }

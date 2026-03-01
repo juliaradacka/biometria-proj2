@@ -12,7 +12,7 @@ public class ImagePanel extends JPanel {
     private BufferedImage image;
 
     public ImagePanel() {
-        setBackground(LIGHT_GREY);
+        setBackground(LIGHT_GRAY);
         setPreferredSize(new Dimension(800, 600));
     }
 

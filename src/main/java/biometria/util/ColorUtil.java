@@ -18,32 +18,15 @@ public final class ColorUtil {
         return argb & 0xFF;
     }
 
+    public static int toARGB(int r, int g, int b) {
+        return toARGB(255, r, g, b);
+    }
+
     public static int toARGB(int a, int r, int g, int b) {
-        a = clamp(a);
-        r = clamp(r);
-        g = clamp(g);
-        b = clamp(b);
-        return (a << 24) | (r << 16) | (g << 8) | b;
-    }
-
-    public static int toLuminance(int r, int g, int b) {
-        return (int) (0.299 * r + 0.587 * g + 0.114 * b);
-    }
-
-    public static int invert(int argb) {
-        int a = getAlpha(argb);
-        int r = 255 - getRed(argb);
-        int g = 255 - getGreen(argb);
-        int b = 255 - getBlue(argb);
-        return toARGB(a, r, g, b);
-    }
-
-    public static int adjustBrightness(int argb, int adjustment) {
-        int a = getAlpha(argb);
-        int r = clamp(getRed(argb) + adjustment);
-        int g = clamp(getGreen(argb) + adjustment);
-        int b = clamp(getBlue(argb) + adjustment);
-        return toARGB(a, r, g, b);
+        return (clamp(a) << 24) |
+                (clamp(r) << 16) |
+                (clamp(g) << 8)  |
+                clamp(b);
     }
 
     public static int clamp(int value) {
@@ -51,5 +34,6 @@ public final class ColorUtil {
     }
 
     private ColorUtil() {
+        throw new AssertionError("Utility class");
     }
 }

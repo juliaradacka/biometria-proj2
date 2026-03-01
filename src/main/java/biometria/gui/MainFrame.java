@@ -1,8 +1,8 @@
 package biometria.gui;
 
 import biometria.operations.ImageOperation;
-import biometria.operations.filters.GrayScaleOperation;
-import biometria.operations.filters.NegativeOperation;
+import biometria.operations.point.GrayScaleOperation;
+import biometria.operations.point.NegativeOperation;
 import biometria.service.EditorService;
 
 import javax.swing.*;
@@ -11,14 +11,12 @@ import java.awt.*;
 import java.io.File;
 
 import static biometria.gui.UIConstants.*;
-import biometria.operations.filters.BrightnessOperation;
-import biometria.gui.dialogs.BrightnessDialog;
 
 public class MainFrame extends JFrame {
 
     private final EditorService editorService;
     private final ImagePanel imagePanel;
-    private JFileChooser fileChooser;
+    private final JFileChooser fileChooser;
     private JSplitPane splitPane;
     private JPanel sidePanel;
 
@@ -26,26 +24,34 @@ public class MainFrame extends JFrame {
     public MainFrame(EditorService service) {
         this.editorService = service;
         this.imagePanel = new ImagePanel();
+        this.fileChooser = createFileChooser();
 
         setTitle("Biometria - Przetwarzanie obrazów");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1200, 800);
         setLocationRelativeTo(null);
 
-//        this.fileChooser = new JFileChooser();
-//        FileNameExtensionFilter filter = new FileNameExtensionFilter(
-//                "Obrazy (PNG, JPG, BMP)", "png", "jpg", "jpeg", "bmp");
-//        fileChooser.setFileFilter(filter);
-//        fileChooser.setAcceptAllFileFilterUsed(false);
-
         initComponents();
         initMenu();
     }
 
+    private static JFileChooser createFileChooser() {
+        JFileChooser chooser = new JFileChooser();
+
+        FileNameExtensionFilter filter = new FileNameExtensionFilter(
+                "Obrazy (PNG, JPG, BMP)",
+                "png", "jpg", "jpeg", "bmp"
+        );
+        chooser.setFileFilter(filter);
+        chooser.setAcceptAllFileFilterUsed(false);
+
+        return chooser;
+    }
+
     private void initComponents() {
-        // Panel boczny (na przyszłośc)
+        // TO DO: panel na histogram i statystyki (na ocenę 4.0)
         sidePanel = new JPanel();
-        sidePanel.setBackground(LIGHT_GREY);
+        sidePanel.setBackground(LIGHT_GRAY);
         sidePanel.setPreferredSize(new Dimension(300,600));
 
         // ImagePanel
@@ -63,21 +69,17 @@ public class MainFrame extends JFrame {
         splitPane.setOneTouchExpandable(true);
 
         add(splitPane, BorderLayout.CENTER);
-
-        // File chooser
-        fileChooser = new JFileChooser();
-        FileNameExtensionFilter filter = new FileNameExtensionFilter(
-                "Pliki obrazów (*.png, *.jpg, *.bmp, *.gif)",
-                "png", "jpg", "jpeg", "bmp", "gif"
-        );
-        fileChooser.setFileFilter(filter);
-        fileChooser.setAcceptAllFileFilterUsed(false);
-
     }
 
     private void initMenu() {
         JMenuBar menuBar = new JMenuBar();
+        menuBar.add(createFileMenu());
+        menuBar.add(createEditMenu());
+        menuBar.add(createOperationsMenu());
+        setJMenuBar(menuBar);
+    }
 
+    private JMenu createFileMenu() {
         JMenu fileMenu = new JMenu("Plik");
 
         JMenuItem openItem = new JMenuItem("Otwórz plik");
@@ -94,9 +96,10 @@ public class MainFrame extends JFrame {
         exitItem.addActionListener(e -> System.exit(0));
         fileMenu.add(exitItem);
 
-        menuBar.add(fileMenu);
+        return fileMenu;
+    }
 
-        // --- Menu Edycja ---
+    private JMenu createEditMenu() {
         JMenu editMenu = new JMenu("Edycja");
 
         JMenuItem undoItem = new JMenuItem("Cofnij");
@@ -121,64 +124,40 @@ public class MainFrame extends JFrame {
             refreshView();
         });
         editMenu.add(resetItem);
-        menuBar.add(editMenu);
 
+        return editMenu;
+    }
+
+    private JMenu createOperationsMenu() {
         JMenu operationsMenu = new JMenu("Operacje");
-        JMenuItem grayscaleItem = new JMenuItem("Skala szarości");
-        grayscaleItem.addActionListener(e -> applyOperation(new GrayScaleOperation()));
+
+        JMenuItem grayScaleItem = new JMenuItem("Odcienie szarości");
+        grayScaleItem.addActionListener(e -> applyOperation(new GrayScaleOperation()));
 
         JMenuItem negativeItem = new JMenuItem("Negatyw");
         negativeItem.addActionListener(e -> applyOperation(new NegativeOperation()));
 
-        JMenuItem brightnessItem = new JMenuItem("Jasność...");
-        brightnessItem.addActionListener(e -> showBrightnessDialog());
-
-        operationsMenu.add(grayscaleItem);
+        operationsMenu.add(grayScaleItem);
         operationsMenu.add(negativeItem);
-        operationsMenu.add(brightnessItem);
-        menuBar.add(operationsMenu);
 
+        return operationsMenu;
+    }
 
-        setJMenuBar(menuBar);
+    private boolean validateImageLoaded() {
+        if (!editorService.hasImage()) {
+            JOptionPane.showMessageDialog(this,
+                    "Najpierw wczytaj obraz.",
+                    "Brak obrazu",
+                    JOptionPane.WARNING_MESSAGE);
+            return false;
+        }
+        return true;
     }
 
     private void applyOperation(ImageOperation operation) {
-        if (!editorService.hasImage()) {
-            JOptionPane.showMessageDialog(this,
-                    "Najpierw wczytaj obraz.",
-                    "Brak obrazu",
-                    JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-
+        if (!validateImageLoaded()) return;
         editorService.applyOperation(operation);
         refreshView();
-    }
-
-    private void showBrightnessDialog() {
-        if (!editorService.hasImage()) {
-            JOptionPane.showMessageDialog(this,
-                    "Najpierw wczytaj obraz.",
-                    "Brak obrazu",
-                    JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-
-        BrightnessDialog dialog = new BrightnessDialog(this);
-        dialog.setVisible(true);
-
-        if (dialog.isConfirmed()) {
-            int value = dialog.getBrightnessValue();
-
-            // Jeśli wartość = 0, nie rób nic
-            if (value == 0) {
-                return;
-            }
-
-            BrightnessOperation operation = new BrightnessOperation(value);
-            editorService.applyOperation(operation);
-            refreshView();
-        }
     }
 
     private void openFile() {
