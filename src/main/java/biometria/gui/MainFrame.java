@@ -2,6 +2,7 @@ package biometria.gui;
 
 import biometria.model.ImageMatrix;
 import biometria.operations.ImageOperation;
+import biometria.operations.filter.ConvolutionOperation;
 import biometria.operations.point.*;
 import biometria.service.EditorService;
 
@@ -241,6 +242,47 @@ public class MainFrame extends JFrame {
             }
         });
         operationsMenu.add(binerazationItem);
+
+        JMenu convolutionMenu = new JMenu("Filtry Splotowe");
+        JMenuItem averageItem = new JMenuItem("Filtr Uśredniający");
+        averageItem.addActionListener(e -> {
+            if(!validateImageLoaded()) return;
+            double[][] mask = {
+                    {1, 1, 1},
+                    {1, 1, 1},
+                    {1, 1, 1}
+            };
+            applyOperation(new ConvolutionOperation(mask, 9.0));
+        });
+        convolutionMenu.add(averageItem);
+
+        JMenuItem gaussianItem = new JMenuItem("Filtr Gaussa");
+        gaussianItem.addActionListener(e -> {
+            if(!validateImageLoaded()) return;
+            double[][] mask = {
+                    {1, 2, 1},
+                    {2, 4, 2},
+                    {1, 2, 1}
+            };
+            applyOperation(new ConvolutionOperation(mask, 16.0));
+        });
+        convolutionMenu.add(gaussianItem);
+
+        JMenuItem sharpenItem = new JMenuItem("Wyostrzanie");
+        sharpenItem.addActionListener(e -> {
+            if (!validateImageLoaded()) return;
+            double[][] mask = {
+                    { 0, -1,  0},
+                    {-1,  5, -1},
+                    { 0, -1,  0}
+            };
+            applyOperation(new ConvolutionOperation(mask, 1.0));
+        });
+        convolutionMenu.add(sharpenItem);
+
+
+        operationsMenu.addSeparator();
+        operationsMenu.add(convolutionMenu);
 
         return operationsMenu;
     }
