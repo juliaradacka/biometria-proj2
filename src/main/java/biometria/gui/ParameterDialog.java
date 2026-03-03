@@ -2,8 +2,10 @@ package biometria.gui;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.function.Consumer;
 
 public class ParameterDialog {
+
 
     public static Integer showSliderDialog(
             Component parent,
@@ -11,9 +13,11 @@ public class ParameterDialog {
             String label,
             int min,
             int max,
-            int initial
+            int initial,
+            Consumer<Integer> previewCallback
     ) {
-        JPanel panel = createSliderPanel(label, min, max, initial);
+
+        JPanel panel = createSliderPanel(label, min, max, initial, previewCallback);
 
         int result = JOptionPane.showConfirmDialog(
                 parent,
@@ -24,7 +28,6 @@ public class ParameterDialog {
         );
 
         if (result == JOptionPane.OK_OPTION) {
-            // pobieranie wartości ze slidera
             return (Integer) panel.getClientProperty("value");
         }
 
@@ -32,18 +35,16 @@ public class ParameterDialog {
     }
 
 
-    private static JPanel createSliderPanel(String label, int min, int max, int initial) {
+    private static JPanel createSliderPanel(String label, int min, int max, int initial, Consumer<Integer> previewCallback) {
         JPanel mainPanel = new JPanel();
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
         mainPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        // label opisowy
         JLabel titleLabel = new JLabel(label);
         titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         mainPanel.add(titleLabel);
         mainPanel.add(Box.createVerticalStrut(15));
 
-        // slider
         JSlider slider = new JSlider(JSlider.HORIZONTAL, min, max, initial);
         slider.setMajorTickSpacing(Math.max(1, (max - min) / 5));
         slider.setMinorTickSpacing(Math.max(1, (max - min) / 20));
@@ -53,7 +54,6 @@ public class ParameterDialog {
         mainPanel.add(slider);
         mainPanel.add(Box.createVerticalStrut(15));
 
-        // panel z dokładną wartością (spinner)
         JPanel valuePanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 5));
         valuePanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
@@ -65,18 +65,28 @@ public class ParameterDialog {
         valuePanel.add(spinner);
         mainPanel.add(valuePanel);
 
-        // synchronizacja wartości ze slider i spinner
+
         slider.addChangeListener(e -> {
-            spinner.setValue(slider.getValue());
-            mainPanel.putClientProperty("value", slider.getValue());
+            int val = slider.getValue();
+            spinner.setValue(val);
+            mainPanel.putClientProperty("value", val);
+
+            if (previewCallback != null) {
+                previewCallback.accept(val);
+            }
         });
+
 
         spinner.addChangeListener(e -> {
-            slider.setValue((Integer) spinner.getValue());
-            mainPanel.putClientProperty("value", (Integer) spinner.getValue());
+            int val = (Integer) spinner.getValue();
+            slider.setValue(val);
+            mainPanel.putClientProperty("value", val);
+
+            if (previewCallback != null) {
+                previewCallback.accept(val);
+            }
         });
 
-        // inicjalizacja wartości
         mainPanel.putClientProperty("value", initial);
 
         return mainPanel;
