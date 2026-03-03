@@ -2,10 +2,7 @@ package biometria.gui;
 
 import biometria.model.ImageMatrix;
 import biometria.operations.ImageOperation;
-import biometria.operations.point.BrightnessOperation;
-import biometria.operations.point.ContrastOperation;
-import biometria.operations.point.GrayScaleOperation;
-import biometria.operations.point.NegativeOperation;
+import biometria.operations.point.*;
 import biometria.service.EditorService;
 
 import javax.swing.*;
@@ -215,6 +212,35 @@ public class MainFrame extends JFrame {
             }
         });
         operationsMenu.add(contrastItem);
+
+
+        JMenuItem binerazationItem = new JMenuItem("Binaryzacja");
+        binerazationItem.addActionListener(e -> {
+            if (!validateImageLoaded()) return;
+
+            ImageMatrix originalForPreview = editorService.getCurrent().copy();
+
+            Integer value = ParameterDialog.showSliderDialog(
+                    this,
+                    "Binaryzacja",
+                    "Ustaw próg (threshold) bieli i czerni:",
+                    0, 255, 128,
+                    (currentValue) -> {
+                        ImageMatrix preview = new BinerazationOperation(currentValue).apply(originalForPreview);
+                        imagePanel.setImage(preview);
+                    }
+
+            );
+
+            if (value != null) {
+                imagePanel.setImage(originalForPreview);
+                applyOperation(new BinerazationOperation(value));
+            }
+            else{
+                imagePanel.setImage(originalForPreview);
+            }
+        });
+        operationsMenu.add(binerazationItem);
 
         return operationsMenu;
     }
