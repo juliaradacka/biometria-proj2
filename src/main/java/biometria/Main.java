@@ -7,6 +7,14 @@ import javax.swing.*;
 
 public class Main {
     public static void main(String[] args) {
+
+        try {
+            // lepszy wygląd okienek
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
         SwingUtilities.invokeLater(() -> {
             EditorService service = new EditorService();
             MainFrame frame = new MainFrame(service);
