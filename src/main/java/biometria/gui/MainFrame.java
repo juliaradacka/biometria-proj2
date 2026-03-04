@@ -1,5 +1,6 @@
 package biometria.gui;
 
+import biometria.model.ImageMatrix;
 import biometria.operations.ImageOperation;
 import biometria.operations.point.BrightnessOperation;
 import biometria.operations.point.ContrastOperation;
@@ -146,35 +147,56 @@ public class MainFrame extends JFrame {
         brightnessItem.addActionListener(e -> {
             if (!validateImageLoaded()) return;
 
+            ImageMatrix originalForPreview = editorService.getCurrent().copy();
+
             Integer value = ParameterDialog.showSliderDialog(
                     this,
                     "Korekta jasności",
                     "Dostosuj jasność obrazu",
-                    -255, 255, 0
+                    -255, 255, 0,
+                    (currentValue) -> {
+                        ImageMatrix preview = new BrightnessOperation(currentValue).apply(originalForPreview);
+                        imagePanel.setImage(preview);
+                    }
+
             );
 
             if (value != null) {
+                imagePanel.setImage(originalForPreview);
                 applyOperation(new BrightnessOperation(value));
+            } else{
+                imagePanel.setImage(originalForPreview);
             }
         });
         operationsMenu.add(brightnessItem);
 
 
         JMenuItem contrastItem = new JMenuItem("Korekta kontrastu");
-        contrastItem.addActionListener(e-> {
-            if(!validateImageLoaded()) return;
+        contrastItem.addActionListener(e -> {
+            if (!validateImageLoaded()) return;
 
-            String input = JOptionPane.showInputDialog(this,"Podaj wartość zmiany kontrastu (-255 do 255):","0");
-            if(input!= null){
-                try{
-                    int offset = Integer.parseInt(input);
-                    applyOperation(new ContrastOperation(offset));
-                } catch (NumberFormatException ex){
-                    JOptionPane.showMessageDialog(this, "Proszę podać prawidłową liczbę całkowitą.");
-                }
+            ImageMatrix originalForPreview = editorService.getCurrent().copy();
+
+            Integer value = ParameterDialog.showSliderDialog(
+                    this,
+                    "Korekta kontrastu",
+                    "Dostosuj kontrast obrazu",
+                    -255, 255, 0,
+                    (currentValue) -> {
+                        ImageMatrix preview = new ContrastOperation(currentValue).apply(originalForPreview);
+                        imagePanel.setImage(preview);
+                    }
+
+            );
+
+            if (value != null) {
+                imagePanel.setImage(originalForPreview);
+                applyOperation(new ContrastOperation(value));
+            }
+            else{
+                imagePanel.setImage(originalForPreview);
             }
         });
-
         operationsMenu.add(contrastItem);
 
         return operationsMenu;
