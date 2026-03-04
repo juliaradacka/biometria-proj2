@@ -20,6 +20,7 @@ public class MainFrame extends JFrame {
     private final JFileChooser fileChooser;
     private JSplitPane splitPane;
     private JPanel sidePanel;
+    private JPanel histogramContainer;
 
 
     public MainFrame(EditorService service) {
@@ -52,8 +53,15 @@ public class MainFrame extends JFrame {
     private void initComponents() {
         // TO DO: panel na histogram i statystyki (na ocenę 4.0)
         sidePanel = new JPanel();
+        sidePanel.setLayout(new BorderLayout());
         sidePanel.setBackground(LIGHT_GRAY);
         sidePanel.setPreferredSize(new Dimension(300,600));
+
+        histogramContainer = new JPanel(new BorderLayout());
+        histogramContainer.setBackground(LIGHT_GRAY);
+        histogramContainer.setBorder(BorderFactory.createTitledBorder("Histogram"));
+
+        sidePanel.add(histogramContainer,BorderLayout.NORTH);
 
         // ImagePanel
         JScrollPane imageScrollPane = new JScrollPane(imagePanel);
@@ -267,6 +275,8 @@ public class MainFrame extends JFrame {
         operationsMenu.addSeparator();
         operationsMenu.add(convolutionMenu);
 
+        updateHistogram();
+
         return operationsMenu;
     }
 
@@ -301,6 +311,8 @@ public class MainFrame extends JFrame {
                         "Błąd", JOptionPane.ERROR_MESSAGE);
             }
         }
+
+        updateHistogram();
     }
 
     private void saveFile() {
@@ -342,6 +354,19 @@ public class MainFrame extends JFrame {
 
     private void refreshView() {
         imagePanel.setImage(editorService.getCurrent());
+        updateHistogram();
+    }
+
+    private void updateHistogram(){
+        if(histogramContainer == null || editorService.getCurrent() == null) return;
+
+        histogramContainer.removeAll();
+
+        HistogramPanel histogramPanel = new HistogramPanel(editorService.getCurrent());
+
+        histogramContainer.add(histogramPanel,BorderLayout.NORTH);
+        histogramContainer.revalidate();
+        histogramContainer.repaint();
     }
 
 }
