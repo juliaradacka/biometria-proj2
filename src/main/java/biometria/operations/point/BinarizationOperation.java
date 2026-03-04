@@ -4,11 +4,11 @@ import biometria.model.ImageMatrix;
 import biometria.operations.ImageOperation;
 import biometria.util.ColorUtil;
 
-public class BinerazationOperation implements ImageOperation {
+public class BinarizationOperation implements ImageOperation {
 
     private final int threshold;
 
-    public BinerazationOperation(int threshold) {
+    public BinarizationOperation(int threshold) {
         this.threshold = threshold;
     }
 

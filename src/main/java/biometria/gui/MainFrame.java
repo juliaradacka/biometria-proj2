@@ -20,6 +20,8 @@ public class MainFrame extends JFrame {
     private final JFileChooser fileChooser;
     private JSplitPane splitPane;
     private JPanel sidePanel;
+    private JPanel histogramContainer;
+    private HistogramPanel currentHistogramPanel;
 
 
     public MainFrame(EditorService service) {
@@ -50,10 +52,16 @@ public class MainFrame extends JFrame {
     }
 
     private void initComponents() {
-        // TO DO: panel na histogram i statystyki (na ocenę 4.0)
         sidePanel = new JPanel();
+        sidePanel.setLayout(new BorderLayout());
         sidePanel.setBackground(LIGHT_GRAY);
         sidePanel.setPreferredSize(new Dimension(300,600));
+
+        histogramContainer = new JPanel(new BorderLayout());
+        histogramContainer.setBackground(LIGHT_GRAY);
+        histogramContainer.setBorder(BorderFactory.createTitledBorder("Histogram"));
+
+        sidePanel.add(histogramContainer,BorderLayout.NORTH);
 
         // ImagePanel
         JScrollPane imageScrollPane = new JScrollPane(imagePanel);
@@ -155,6 +163,9 @@ public class MainFrame extends JFrame {
                     (currentValue) -> {
                         ImageMatrix preview = new BrightnessOperation(currentValue).apply(originalForPreview);
                         imagePanel.setImage(preview);
+                        if (currentHistogramPanel != null) {
+                            currentHistogramPanel.updateHistogram(preview);
+                        }
                     }
 
             );
@@ -183,8 +194,10 @@ public class MainFrame extends JFrame {
                     (currentValue) -> {
                         ImageMatrix preview = new ContrastOperation(currentValue).apply(originalForPreview);
                         imagePanel.setImage(preview);
+                        if (currentHistogramPanel != null) {
+                            currentHistogramPanel.updateHistogram(preview);
+                        }
                     }
-
             );
 
             if (value != null) {
@@ -210,15 +223,18 @@ public class MainFrame extends JFrame {
                     "Ustaw próg (threshold) bieli i czerni:",
                     0, 255, 128,
                     (currentValue) -> {
-                        ImageMatrix preview = new BinerazationOperation(currentValue).apply(originalForPreview);
+                        ImageMatrix preview = new BinarizationOperation(currentValue).apply(originalForPreview);
                         imagePanel.setImage(preview);
+                        if (currentHistogramPanel != null) {
+                            currentHistogramPanel.updateHistogram(preview);
+                        }
                     }
 
             );
 
             if (value != null) {
                 imagePanel.setImage(originalForPreview);
-                applyOperation(new BinerazationOperation(value));
+                applyOperation(new BinarizationOperation(value));
             }
             else{
                 imagePanel.setImage(originalForPreview);
@@ -267,6 +283,8 @@ public class MainFrame extends JFrame {
         operationsMenu.addSeparator();
         operationsMenu.add(convolutionMenu);
 
+        updateHistogram();
+
         return operationsMenu;
     }
 
@@ -301,6 +319,8 @@ public class MainFrame extends JFrame {
                         "Błąd", JOptionPane.ERROR_MESSAGE);
             }
         }
+
+        updateHistogram();
     }
 
     private void saveFile() {
@@ -342,6 +362,19 @@ public class MainFrame extends JFrame {
 
     private void refreshView() {
         imagePanel.setImage(editorService.getCurrent());
+        updateHistogram();
+    }
+
+    private void updateHistogram() {
+        if (histogramContainer == null || editorService.getCurrent() == null) return;
+
+        histogramContainer.removeAll();
+
+        currentHistogramPanel = new HistogramPanel(editorService.getCurrent());
+
+        histogramContainer.add(currentHistogramPanel, BorderLayout.NORTH);
+        histogramContainer.revalidate();
+        histogramContainer.repaint();
     }
 
 }
