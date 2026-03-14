@@ -18,8 +18,23 @@ public class MainFrame extends JFrame {
 
     private JSplitPane splitPane;
     private JPanel sidePanel;
+
     private JPanel histogramContainer;
     private HistogramPanel currentHistogramPanel;
+
+    private JPanel projectionsContainer;
+    private JPanel projectionControls;
+
+    private ProjectionPanel horizontalProjectionPanel;
+    private ProjectionPanel verticalProjectionPanel;
+
+    private JSpinner projectionThresholdSpinner;
+    private JRadioButton objectDarkRadio;
+    private JRadioButton objectBrightRadio;
+
+    private static final int PROJECTION_THRESHOLD_MIN = 0;
+    private static final int PROJECTION_THRESHOLD_MAX = 255;
+    private static final int PROJECTION_THRESHOLD_DEFAULT = 128;
 
     public MainFrame(EditorService service) {
         this.editorService = service;
@@ -36,16 +51,57 @@ public class MainFrame extends JFrame {
     }
 
     private void initComponents() {
-        sidePanel = new JPanel();
-        sidePanel.setLayout(new BorderLayout());
+        sidePanel = new JPanel(new BorderLayout());
         sidePanel.setBackground(LIGHT_GRAY);
         sidePanel.setPreferredSize(new Dimension(300, 600));
 
         histogramContainer = new JPanel(new BorderLayout());
         histogramContainer.setBackground(LIGHT_GRAY);
         histogramContainer.setBorder(BorderFactory.createTitledBorder("Histogram"));
+        histogramContainer.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        sidePanel.add(histogramContainer, BorderLayout.NORTH);
+        projectionsContainer = new JPanel();
+        projectionsContainer.setLayout(new BoxLayout(projectionsContainer, BoxLayout.Y_AXIS));
+        projectionsContainer.setBackground(LIGHT_GRAY);
+        projectionsContainer.setBorder(BorderFactory.createTitledBorder("Projekcje"));
+        projectionsContainer.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        projectionControls = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
+        projectionControls.setBackground(LIGHT_GRAY);
+        projectionControls.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        projectionThresholdSpinner = new JSpinner(
+                new SpinnerNumberModel(PROJECTION_THRESHOLD_DEFAULT, PROJECTION_THRESHOLD_MIN, PROJECTION_THRESHOLD_MAX, 1)
+        );
+
+        objectDarkRadio = new JRadioButton("Ciemne", true);
+        objectBrightRadio = new JRadioButton("Jasne", false);
+        objectDarkRadio.setBackground(LIGHT_GRAY);
+        objectBrightRadio.setBackground(LIGHT_GRAY);
+
+        ButtonGroup bg = new ButtonGroup();
+        bg.add(objectDarkRadio);
+        bg.add(objectBrightRadio);
+
+        projectionControls.add(new JLabel("Threshold:"));
+        projectionControls.add(projectionThresholdSpinner);
+        projectionControls.add(objectDarkRadio);
+        projectionControls.add(objectBrightRadio);
+
+        projectionThresholdSpinner.addChangeListener(e -> updateProjectionsPanel());
+        objectDarkRadio.addActionListener(e -> updateProjectionsPanel());
+        objectBrightRadio.addActionListener(e -> updateProjectionsPanel());
+
+        // Układ prawego panelu: histogram + projekcje pod spodem
+        JPanel rightTop = new JPanel();
+        rightTop.setLayout(new BoxLayout(rightTop, BoxLayout.Y_AXIS));
+        rightTop.setBackground(LIGHT_GRAY);
+
+        rightTop.add(histogramContainer);
+        rightTop.add(Box.createVerticalStrut(10));
+        rightTop.add(projectionsContainer);
+
+        sidePanel.add(rightTop, BorderLayout.NORTH);
 
         JScrollPane imageScrollPane = new JScrollPane(imagePanel);
         imageScrollPane.setPreferredSize(new Dimension(800, 600));
@@ -60,6 +116,8 @@ public class MainFrame extends JFrame {
         splitPane.setOneTouchExpandable(true);
 
         add(splitPane, BorderLayout.CENTER);
+
+        updateProjectionsPanel();
     }
 
     private void initMenu() {
@@ -86,14 +144,17 @@ public class MainFrame extends JFrame {
 
     void undo() {
         editorService.undo();
+        refreshView();
     }
 
     void redo() {
         editorService.redo();
+        refreshView();
     }
 
     void reset() {
         editorService.resetToOriginal();
+        refreshView();
     }
 
     void applyOperation(ImageOperation operation) {
@@ -123,21 +184,23 @@ public class MainFrame extends JFrame {
                     description,
                     min, max, initial,
                     (currentValue) -> {
-                        ImageMatrix preview = operationFactory.apply(currentValue)
-                                .apply(originalForPreview);
+                        ImageMatrix preview = operationFactory.apply(currentValue).apply(originalForPreview);
                         imagePanel.setImage(preview);
 
                         if (currentHistogramPanel != null) {
                             currentHistogramPanel.updateHistogram(preview);
                         }
+                        updateProjections(preview);
                     }
             );
 
+            // wróć do "oryginału podglądu"
+            imagePanel.setImage(originalForPreview);
+
             if (value != null) {
-                imagePanel.setImage(originalForPreview);
                 applyOperation(operationFactory.apply(value));
             } else {
-                imagePanel.setImage(originalForPreview);
+                refreshView();
             }
         });
 
@@ -158,17 +221,73 @@ public class MainFrame extends JFrame {
     void refreshView() {
         imagePanel.setImage(editorService.getCurrent());
         updateHistogram();
+        updateProjectionsPanel();
     }
 
     private void updateHistogram() {
-        if (histogramContainer == null || editorService.getCurrent() == null) return;
+        if (histogramContainer == null) return;
 
+        ImageMatrix img = editorService.getCurrent();
         histogramContainer.removeAll();
 
-        currentHistogramPanel = new HistogramPanel(editorService.getCurrent());
+        if (img != null) {
+            currentHistogramPanel = new HistogramPanel(img);
+            histogramContainer.add(currentHistogramPanel, BorderLayout.NORTH);
+        } else {
+            currentHistogramPanel = null;
+        }
 
-        histogramContainer.add(currentHistogramPanel, BorderLayout.NORTH);
         histogramContainer.revalidate();
         histogramContainer.repaint();
+    }
+
+    private void updateProjectionsPanel() {
+        if (projectionsContainer == null) return;
+
+        projectionsContainer.removeAll();
+        projectionsContainer.add(projectionControls);
+        projectionsContainer.add(Box.createVerticalStrut(6));
+
+        ImageMatrix img = editorService.getCurrent();
+        if (img == null) {
+            horizontalProjectionPanel = null;
+            verticalProjectionPanel = null;
+            projectionsContainer.revalidate();
+            projectionsContainer.repaint();
+            return;
+        }
+
+        int threshold = (Integer) projectionThresholdSpinner.getValue();
+        boolean objectIsDark = objectDarkRadio.isSelected();
+
+        int[] h = Projections.horizontal(img, threshold, objectIsDark);
+        int[] v = Projections.vertical(img, threshold, objectIsDark);
+
+        verticalProjectionPanel = new ProjectionPanel("Projekcja pionowa", true);
+        horizontalProjectionPanel = new ProjectionPanel("Projekcja pozioma", false);
+
+        verticalProjectionPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        horizontalProjectionPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        verticalProjectionPanel.updateProjection(v);
+        horizontalProjectionPanel.updateProjection(h);
+
+        projectionsContainer.add(verticalProjectionPanel);
+        projectionsContainer.add(Box.createVerticalStrut(6));
+        projectionsContainer.add(horizontalProjectionPanel);
+
+        projectionsContainer.revalidate();
+        projectionsContainer.repaint();
+    }
+
+    private void updateProjections(ImageMatrix image) {
+        if (image == null) return;
+        if (horizontalProjectionPanel == null || verticalProjectionPanel == null) return;
+
+        int threshold = (Integer) projectionThresholdSpinner.getValue();
+        boolean objectIsDark = objectDarkRadio.isSelected();
+
+        horizontalProjectionPanel.updateProjection(Projections.horizontal(image, threshold, objectIsDark));
+        verticalProjectionPanel.updateProjection(Projections.vertical(image, threshold, objectIsDark));
     }
 }
