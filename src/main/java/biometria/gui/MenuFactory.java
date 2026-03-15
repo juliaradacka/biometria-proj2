@@ -145,6 +145,19 @@ public class MenuFactory {
         operationsMenu.addSeparator();
         operationsMenu.add(convolutionMenu);
 
+        JMenuItem customKernelItem = new JMenuItem("Filtr własny");
+        customKernelItem.addActionListener(e -> {
+            if (!frame.validateImageLoaded()) return;
+
+            CustomConvolutionDialog.Kernel k = CustomConvolutionDialog.showDialog(frame);
+            if (k == null) return;
+
+            frame.applyOperation(new ConvolutionOperation(k.mask, k.weight));
+        });
+
+        convolutionMenu.addSeparator();
+        convolutionMenu.add(customKernelItem);
+
         return operationsMenu;
     }
 }
