@@ -1,6 +1,8 @@
 package biometria.gui;
 
 import biometria.operations.filter.ConvolutionOperation;
+import biometria.operations.filter.RobertsOperation;
+import biometria.operations.filter.SobelOperation;
 import biometria.operations.point.*;
 
 import javax.swing.*;
@@ -141,6 +143,21 @@ public class MenuFactory {
             frame.applyOperation(new ConvolutionOperation(mask, 1.0));
         });
         convolutionMenu.add(sharpenItem);
+
+        convolutionMenu.addSeparator();
+        JMenuItem sobelItem = new JMenuItem("Wykrywanie krawędzi (Sobela)");
+        sobelItem.addActionListener(e ->{
+            if(!frame.validateImageLoaded()) return;
+            frame.applyOperation(new SobelOperation());
+        });
+        convolutionMenu.add(sobelItem);
+
+        JMenuItem robertsItem = new JMenuItem("Wykrywanie krawędzi (Roberts)");
+        robertsItem.addActionListener(e -> {
+            if (!frame.validateImageLoaded()) return;
+            frame.applyOperation(new RobertsOperation());
+        });
+        convolutionMenu.add(robertsItem);
 
         operationsMenu.addSeparator();
         operationsMenu.add(convolutionMenu);
