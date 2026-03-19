@@ -1,4 +1,4 @@
-package biometria.operations.point;
+package biometria.operations.point.grayscale;
 
 import biometria.model.ImageMatrix;
 import biometria.operations.ImageOperation;

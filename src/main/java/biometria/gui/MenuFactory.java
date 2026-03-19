@@ -4,6 +4,9 @@ import biometria.operations.filter.ConvolutionOperation;
 import biometria.operations.filter.RobertsOperation;
 import biometria.operations.filter.SobelOperation;
 import biometria.operations.point.*;
+import biometria.operations.point.grayscale.GrayScaleAverageOperation;
+import biometria.operations.point.grayscale.GrayScaleLightnessOperation;
+import biometria.operations.point.grayscale.GrayScaleOperation;
 
 import javax.swing.*;
 
@@ -73,13 +76,29 @@ public class MenuFactory {
     public static JMenu createOperationsMenu(MainFrame frame) {
         JMenu operationsMenu = new JMenu("Operacje");
 
-        JMenuItem grayScaleItem = new JMenuItem("Odcienie szarości");
-        grayScaleItem.addActionListener(e -> frame.applyOperation(new GrayScaleOperation()));
+        JMenu grayScaleMenu = new JMenu("Odcienie szarości");
+
+        JMenuItem grayScaleLumItem = new JMenuItem("Luminancja (Oko ludzkie)");
+        grayScaleLumItem.addActionListener(e -> frame.applyOperation(new GrayScaleOperation()));
+
+        JMenuItem grayScaleAvgItem = new JMenuItem("Średnia RGB");
+        grayScaleAvgItem.addActionListener(e -> frame.applyOperation(new GrayScaleAverageOperation()));
+
+        JMenuItem grayScaleLightItem = new JMenuItem("Jasność (Rozstęp)");
+        grayScaleLightItem.addActionListener(e -> frame.applyOperation(new GrayScaleLightnessOperation()));
+
+        grayScaleMenu.add(grayScaleLumItem);
+        grayScaleMenu.add(grayScaleAvgItem);
+        grayScaleMenu.add(grayScaleLightItem);
+        operationsMenu.add(grayScaleMenu);
+
+        //JMenuItem grayScaleItem = new JMenuItem("Odcienie szarości");
+        //grayScaleItem.addActionListener(e -> frame.applyOperation(new GrayScaleOperation()));
 
         JMenuItem negativeItem = new JMenuItem("Negatyw");
         negativeItem.addActionListener(e -> frame.applyOperation(new NegativeOperation()));
 
-        operationsMenu.add(grayScaleItem);
+        //operationsMenu.add(grayScaleItem);
         operationsMenu.add(negativeItem);
 
         frame.createParametricOperationItem(

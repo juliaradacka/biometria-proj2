@@ -2,7 +2,7 @@ package biometria.operations.filter;
 
 import biometria.model.ImageMatrix;
 import biometria.operations.ImageOperation;
-import biometria.operations.point.GrayScaleOperation;
+import biometria.operations.point.grayscale.GrayScaleOperation;
 import biometria.util.ColorUtil;
 
 public class RobertsOperation implements ImageOperation {
