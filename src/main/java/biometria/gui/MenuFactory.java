@@ -3,6 +3,10 @@ package biometria.gui;
 import biometria.operations.filter.ConvolutionOperation;
 import biometria.operations.filter.RobertsOperation;
 import biometria.operations.filter.SobelOperation;
+import biometria.operations.morphology.ClosingOperation;
+import biometria.operations.morphology.DilatationOperation;
+import biometria.operations.morphology.ErosionOperation;
+import biometria.operations.morphology.OpeningOperation;
 import biometria.operations.point.*;
 import biometria.operations.point.grayscale.GrayScaleAverageOperation;
 import biometria.operations.point.grayscale.GrayScaleLightnessOperation;
@@ -184,6 +188,39 @@ public class MenuFactory {
 
         operationsMenu.addSeparator();
         operationsMenu.add(convolutionMenu);
+
+        JMenu morphologyMenu = new JMenu("OperacjeMorfologiczne");
+
+        JMenuItem erosionItem = new JMenuItem("Erozja");
+        erosionItem.addActionListener(e -> {
+            if (!frame.validateImageLoaded()) return;
+            frame.applyOperation(new ErosionOperation());
+        });
+        morphologyMenu.add(erosionItem);
+
+        JMenuItem dilationItem = new JMenuItem("Dylatacja");
+        dilationItem.addActionListener(e -> {
+            if (!frame.validateImageLoaded()) return;
+            frame.applyOperation(new DilatationOperation());
+        });
+        morphologyMenu.add(dilationItem);
+
+        JMenuItem openingItem = new JMenuItem("Otwarcie");
+        openingItem.addActionListener(e -> {
+            if (!frame.validateImageLoaded()) return;
+            frame.applyOperation(new OpeningOperation());
+        });
+        morphologyMenu.add(openingItem);
+
+        JMenuItem closingItem = new JMenuItem("Zamknięcie");
+        closingItem.addActionListener(e -> {
+            if (!frame.validateImageLoaded()) return;
+            frame.applyOperation(new ClosingOperation());
+        });
+        morphologyMenu.add(closingItem);
+
+        operationsMenu.addSeparator();
+        operationsMenu.add(morphologyMenu);
 
         JMenuItem customKernelItem = new JMenuItem("Filtr własny");
         customKernelItem.addActionListener(e -> {
