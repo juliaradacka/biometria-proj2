@@ -3,10 +3,7 @@ package biometria.gui;
 import biometria.operations.filter.ConvolutionOperation;
 import biometria.operations.filter.RobertsOperation;
 import biometria.operations.filter.SobelOperation;
-import biometria.operations.morphology.ClosingOperation;
-import biometria.operations.morphology.DilatationOperation;
-import biometria.operations.morphology.ErosionOperation;
-import biometria.operations.morphology.OpeningOperation;
+import biometria.operations.morphology.*;
 import biometria.operations.point.*;
 import biometria.operations.point.grayscale.GrayScaleAverageOperation;
 import biometria.operations.point.grayscale.GrayScaleLightnessOperation;
@@ -189,35 +186,36 @@ public class MenuFactory {
         operationsMenu.addSeparator();
         operationsMenu.add(convolutionMenu);
 
-        JMenu morphologyMenu = new JMenu("OperacjeMorfologiczne");
+        JMenu morphologyMenu = new JMenu("Operacje Morfologiczne");
 
-        JMenuItem erosionItem = new JMenuItem("Erozja");
-        erosionItem.addActionListener(e -> {
-            if (!frame.validateImageLoaded()) return;
-            frame.applyOperation(new ErosionOperation());
-        });
-        morphologyMenu.add(erosionItem);
+        morphologyMenu.add(new JMenuItem("Erozja") {{
+            addActionListener(e -> {
+                if (!frame.validateImageLoaded()) return;
+                frame.applyOperation(new BinaryThenOperation(128, new ErosionOperation()));
+            });
+        }});
 
-        JMenuItem dilationItem = new JMenuItem("Dylatacja");
-        dilationItem.addActionListener(e -> {
-            if (!frame.validateImageLoaded()) return;
-            frame.applyOperation(new DilatationOperation());
-        });
-        morphologyMenu.add(dilationItem);
+        morphologyMenu.add(new JMenuItem("Dylatacja") {{
+            addActionListener(e -> {
+                if (!frame.validateImageLoaded()) return;
+                frame.applyOperation(new BinaryThenOperation(128, new DilatationOperation()));
+            });
+        }});
 
-        JMenuItem openingItem = new JMenuItem("Otwarcie");
-        openingItem.addActionListener(e -> {
-            if (!frame.validateImageLoaded()) return;
-            frame.applyOperation(new OpeningOperation());
-        });
-        morphologyMenu.add(openingItem);
+        morphologyMenu.add(new JMenuItem("Otwarcie") {{
+            addActionListener(e -> {
+                if (!frame.validateImageLoaded()) return;
+                frame.applyOperation(new BinaryThenOperation(128, new OpeningOperation()));
+            });
+        }});
 
-        JMenuItem closingItem = new JMenuItem("Zamknięcie");
-        closingItem.addActionListener(e -> {
-            if (!frame.validateImageLoaded()) return;
-            frame.applyOperation(new ClosingOperation());
-        });
-        morphologyMenu.add(closingItem);
+        morphologyMenu.add(new JMenuItem("Zamknięcie") {{
+            addActionListener(e -> {
+                if (!frame.validateImageLoaded()) return;
+                frame.applyOperation(new BinaryThenOperation(128, new ClosingOperation()));
+            });
+        }});
+
 
         operationsMenu.addSeparator();
         operationsMenu.add(morphologyMenu);

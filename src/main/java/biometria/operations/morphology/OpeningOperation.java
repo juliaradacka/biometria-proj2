@@ -2,18 +2,16 @@ package biometria.operations.morphology;
 
 import biometria.model.ImageMatrix;
 import biometria.operations.ImageOperation;
-import biometria.operations.point.BinarizationOperation;
 
 public class OpeningOperation implements ImageOperation {
+
     @Override
     public ImageMatrix apply(ImageMatrix input) {
-        ErosionOperation erosionOperation = new ErosionOperation();
-        DilatationOperation dilatationOperation = new DilatationOperation();
+        ImageOperation erosion = new ErosionOperation();
+        ImageOperation dilation = new DilatationOperation();
 
-
-        ImageMatrix result = erosionOperation.apply(input);
-        dilatationOperation.apply(result);
-
+        ImageMatrix result = erosion.apply(input);
+        result = dilation.apply(result);
         return result;
     }
 }

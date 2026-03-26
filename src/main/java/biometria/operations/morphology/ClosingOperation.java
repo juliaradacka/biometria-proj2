@@ -4,15 +4,14 @@ import biometria.model.ImageMatrix;
 import biometria.operations.ImageOperation;
 
 public class ClosingOperation implements ImageOperation {
+
     @Override
     public ImageMatrix apply(ImageMatrix input) {
+        ImageOperation dilation = new DilatationOperation();
+        ImageOperation erosion = new ErosionOperation();
 
-        DilatationOperation dilatationOperation = new DilatationOperation();
-        ErosionOperation erosionOperation = new ErosionOperation();
-
-        ImageMatrix result = dilatationOperation.apply(input);
-        erosionOperation.apply(result);
-
+        ImageMatrix result = dilation.apply(input);
+        result = erosion.apply(result);
         return result;
     }
 }

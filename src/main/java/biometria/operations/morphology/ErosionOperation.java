@@ -2,39 +2,37 @@ package biometria.operations.morphology;
 
 import biometria.model.ImageMatrix;
 import biometria.operations.ImageOperation;
-import biometria.operations.point.BinarizationOperation;
 import biometria.util.ColorUtil;
 
-import java.awt.*;
-
 public class ErosionOperation implements ImageOperation {
+
+    private static final int BLACK = 0;
+    private static final int WHITE = 255;
+
     @Override
     public ImageMatrix apply(ImageMatrix input) {
+        int w = input.getWidth();
+        int h = input.getHeight();
 
+        ImageMatrix result = input.copy();
 
-        int width = input.getWidth();
-        int height = input.getHeight();
-        BinarizationOperation binarizationOperation = new BinarizationOperation(128);
-        ImageMatrix binaryImage = binarizationOperation.apply(input);
+        for (int y = 1; y < h - 1; y++) {
+            for (int x = 1; x < w - 1; x++) {
 
-        ImageMatrix result = binaryImage.copy();
+                int maxVal = BLACK;
 
-        for(int y=1; y<height-1; y++){
-            for(int x=1; x<width-1; x++){
-                int minVal = 255;
-
-                for(int ky=-1; ky<=1; ky++){
-                    for(int kx=-1; kx<=1; kx++){
-                        int argb = binaryImage.getARGB(x+kx, y+ky);
+                for (int ky = -1; ky <= 1; ky++) {
+                    for (int kx = -1; kx <= 1; kx++) {
+                        int argb = input.getARGB(x + kx, y + ky);
                         int gray = ColorUtil.getRed(argb);
-                        minVal = Math.min(minVal, gray);
+                        maxVal = Math.max(maxVal, gray);
                     }
                 }
 
-                result.setARGB(x,y,ColorUtil.toARGB(255, minVal, minVal,minVal));
+                int v = (maxVal == WHITE) ? WHITE : BLACK;
+                result.setARGB(x, y, ColorUtil.toARGB(255, v, v, v));
             }
         }
-
 
         return result;
     }
