@@ -9,24 +9,39 @@ public class DilatationOperation implements ImageOperation {
     private static final int BLACK = 0;
     private static final int WHITE = 255;
 
+    private final boolean[][] se;
+    private final int size;
+    private final int center;
+
+    public DilatationOperation(int size, StructuringElementShape shape) {
+        this.size = size;
+        this.center = size / 2;
+        this.se = StructuringElementFactory.create(size, shape);
+    }
+
     @Override
     public ImageMatrix apply(ImageMatrix input) {
         int w = input.getWidth();
         int h = input.getHeight();
 
-        ImageMatrix result = input.copy();
+        ImageMatrix result = new ImageMatrix(w, h);
 
-        for (int y = 1; y < h - 1; y++) {
-            for (int x = 1; x < w - 1; x++) {
-
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
                 int minVal = WHITE;
 
-                for (int ky = -1; ky <= 1; ky++) {
-                    for (int kx = -1; kx <= 1; kx++) {
-                        int argb = input.getARGB(x + kx, y + ky);
-                        int gray = ColorUtil.getRed(argb); // oczekujemy 0 albo 255
+                for (int sy = 0; sy < size; sy++) {
+                    for (int sx = 0; sx < size; sx++) {
+                        if (!se[sy][sx]) continue;
+
+                        int xx = clamp(x + (sx - center), 0, w - 1); // edge padding
+                        int yy = clamp(y + (sy - center), 0, h - 1);
+
+                        int gray = ColorUtil.getRed(input.getARGB(xx, yy));
                         minVal = Math.min(minVal, gray);
+                        if (minVal == BLACK) break; // szybkie wyjście
                     }
+                    if (minVal == BLACK) break;
                 }
 
                 int v = (minVal == BLACK) ? BLACK : WHITE;
@@ -35,5 +50,9 @@ public class DilatationOperation implements ImageOperation {
         }
 
         return result;
+    }
+
+    private static int clamp(int v, int lo, int hi) {
+        return Math.max(lo, Math.min(hi, v));
     }
 }

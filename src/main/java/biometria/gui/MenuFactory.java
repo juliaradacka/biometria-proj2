@@ -191,31 +191,70 @@ public class MenuFactory {
         morphologyMenu.add(new JMenuItem("Erozja") {{
             addActionListener(e -> {
                 if (!frame.validateImageLoaded()) return;
-                frame.applyOperation(new BinaryThenOperation(128, new ErosionOperation()));
+
+                ParameterDialog.MorphParams p = ParameterDialog.showMorphologyDialog(
+                        frame,
+                        "Erozja - parametry",
+                        true
+                );
+                if (p == null) return;
+
+                frame.applyOperation(
+                        new BinaryThenOperation(128,
+                                new RepeatOperation(new ErosionOperation(p.size, p.shape), p.iterations)
+                        )
+                );
             });
         }});
 
         morphologyMenu.add(new JMenuItem("Dylatacja") {{
             addActionListener(e -> {
                 if (!frame.validateImageLoaded()) return;
-                frame.applyOperation(new BinaryThenOperation(128, new DilatationOperation()));
+
+                ParameterDialog.MorphParams p = ParameterDialog.showMorphologyDialog(
+                        frame,
+                        "Dylatacja - parametry",
+                        true
+                );
+                if (p == null) return;
+
+                frame.applyOperation(
+                        new BinaryThenOperation(128,
+                                new RepeatOperation(new DilatationOperation(p.size, p.shape), p.iterations)
+                        )
+                );
             });
         }});
 
         morphologyMenu.add(new JMenuItem("Otwarcie") {{
             addActionListener(e -> {
                 if (!frame.validateImageLoaded()) return;
-                frame.applyOperation(new BinaryThenOperation(128, new OpeningOperation()));
+
+                ParameterDialog.MorphParams p = ParameterDialog.showMorphologyDialog(
+                        frame,
+                        "Otwarcie - parametry",
+                        false
+                );
+                if (p == null) return;
+
+                frame.applyOperation(new BinaryThenOperation(128, new OpeningOperation(p.size, p.shape)));
             });
         }});
 
         morphologyMenu.add(new JMenuItem("Zamknięcie") {{
             addActionListener(e -> {
                 if (!frame.validateImageLoaded()) return;
-                frame.applyOperation(new BinaryThenOperation(128, new ClosingOperation()));
+
+                ParameterDialog.MorphParams p = ParameterDialog.showMorphologyDialog(
+                        frame,
+                        "Zamknięcie - parametry",
+                        false
+                );
+                if (p == null) return;
+
+                frame.applyOperation(new BinaryThenOperation(128, new ClosingOperation(p.size, p.shape)));
             });
         }});
-
 
         operationsMenu.addSeparator();
         operationsMenu.add(morphologyMenu);
