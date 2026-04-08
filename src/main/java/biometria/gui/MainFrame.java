@@ -2,6 +2,8 @@ package biometria.gui;
 
 import biometria.model.ImageMatrix;
 import biometria.operations.ImageOperation;
+import biometria.operations.point.BinarizationOperation;
+import biometria.operations.point.grayscale.GrayScaleAverageOperation;
 import biometria.service.EditorService;
 
 import javax.swing.*;
@@ -350,7 +352,9 @@ public class MainFrame extends JFrame {
         JButton btnGray = new JButton("1. Przekształć do szarości");
         btnGray.setAlignmentX(Component.CENTER_ALIGNMENT);
         btnGray.addActionListener(e -> {
-            // TODO: przeksztalcenie do szarosci
+            if(!validateImageLoaded()) return;
+
+            applyOperation(new GrayScaleAverageOperation());
         });
 
         JPanel pnlPupil = new JPanel(new FlowLayout(FlowLayout.CENTER));
