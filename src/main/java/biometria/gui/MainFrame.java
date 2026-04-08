@@ -1,5 +1,6 @@
 package biometria.gui;
 
+import biometria.iris.IrisAnalyzer;
 import biometria.model.ImageMatrix;
 import biometria.operations.ImageOperation;
 import biometria.operations.point.BinarizationOperation;
@@ -377,8 +378,16 @@ public class MainFrame extends JFrame {
         JButton btnBinPupil = new JButton("2. Binaryzacja Źrenicy");
         btnBinPupil.setAlignmentX(Component.CENTER_ALIGNMENT);
         btnBinPupil.addActionListener(e -> {
+            if(!validateImageLoaded()) return;
+
+            ImageMatrix currentImage = editorService.getCurrent();
+            double p = IrisAnalyzer.calculateAverageBrightness(currentImage);
             double xpValue = (Double) spinnerXp.getValue();
-            // TODO: pobrać histogram, wyliczyć P / xpValue i zrobić binaryzację
+
+            int ppTreshold = (int) (p/xpValue);
+
+            applyOperation(new BinarizationOperation(ppTreshold));
+
         });
 
         JButton btnMorphPupil = new JButton("3. Morfologia");
