@@ -1,7 +1,10 @@
 package biometria.gui;
 
+import biometria.iris.IrisAnalyzer;
 import biometria.model.ImageMatrix;
 import biometria.operations.ImageOperation;
+import biometria.operations.point.BinarizationOperation;
+import biometria.operations.point.grayscale.GrayScaleAverageOperation;
 import biometria.service.EditorService;
 
 import javax.swing.*;
@@ -14,6 +17,7 @@ public class MainFrame extends JFrame {
 
     private final EditorService editorService;
     private final ImagePanel imagePanel;
+    private final ImagePanel unwrappedIrisPanel;
     private final FileHandler fileHandler;
 
     private SwingWorker<ImageMatrix, Void> previewWorker;
@@ -41,6 +45,7 @@ public class MainFrame extends JFrame {
 
     public MainFrame(EditorService service) {
         this.editorService = service;
+        this.unwrappedIrisPanel = new ImagePanel();
         this.imagePanel = new ImagePanel();
         this.fileHandler = new FileHandler(editorService, this);
 
@@ -58,10 +63,10 @@ public class MainFrame extends JFrame {
         sidePanel.setBackground(LIGHT_GRAY);
         sidePanel.setPreferredSize(new Dimension(300, 600));
 
-        histogramContainer = new JPanel(new BorderLayout());
-        histogramContainer.setBackground(LIGHT_GRAY);
-        histogramContainer.setBorder(BorderFactory.createTitledBorder("Histogram"));
-        histogramContainer.setAlignmentX(Component.LEFT_ALIGNMENT);
+//        histogramContainer = new JPanel(new BorderLayout());
+//        histogramContainer.setBackground(LIGHT_GRAY);
+//        histogramContainer.setBorder(BorderFactory.createTitledBorder("Histogram"));
+//        histogramContainer.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         projectionsContainer = new JPanel();
         projectionsContainer.setLayout(new BoxLayout(projectionsContainer, BoxLayout.Y_AXIS));
@@ -95,22 +100,32 @@ public class MainFrame extends JFrame {
         objectDarkRadio.addActionListener(e -> updateProjectionsPanel());
         objectBrightRadio.addActionListener(e -> updateProjectionsPanel());
 
-        JPanel rightTop = new JPanel();
-        rightTop.setLayout(new BoxLayout(rightTop, BoxLayout.Y_AXIS));
+        JPanel rightTop = new JPanel(new BorderLayout(0,10));
+//        rightTop.setLayout(new BoxLayout(rightTop, BoxLayout.Y_AXIS));
         rightTop.setBackground(LIGHT_GRAY);
 
-        rightTop.add(histogramContainer);
+        rightTop.add(createIrisDetectionPanel(), BorderLayout.NORTH);
         rightTop.add(Box.createVerticalStrut(10));
-        rightTop.add(projectionsContainer);
+        rightTop.add(projectionsContainer, BorderLayout.CENTER);
 
         sidePanel.add(rightTop, BorderLayout.NORTH);
 
-        JScrollPane imageScrollPane = new JScrollPane(imagePanel);
-        imageScrollPane.setPreferredSize(new Dimension(800, 600));
+//        JScrollPane imageScrollPane = new JScrollPane(imagePanel);
+//        imageScrollPane.setPreferredSize(new Dimension(800, 500));
+        imagePanel.setPreferredSize(new Dimension(800,500));
+        unwrappedIrisPanel.setPreferredSize(new Dimension(800, 150));
+
+        JPanel bottomContainer = new JPanel(new BorderLayout());
+        bottomContainer.setBorder(BorderFactory.createTitledBorder("Rozwinięcie biegunowe tęczówki"));
+        bottomContainer.add(unwrappedIrisPanel, BorderLayout.CENTER);
+
+        JPanel centerContainer = new JPanel(new BorderLayout(0, 5));
+        centerContainer.add(imagePanel, BorderLayout.CENTER);
+        centerContainer.add(bottomContainer, BorderLayout.SOUTH);
 
         splitPane = new JSplitPane(
                 JSplitPane.HORIZONTAL_SPLIT,
-                imageScrollPane,
+                centerContainer,
                 sidePanel
         );
         splitPane.setDividerLocation(850);
@@ -126,7 +141,7 @@ public class MainFrame extends JFrame {
         JMenuBar menuBar = new JMenuBar();
         menuBar.add(MenuFactory.createFileMenu(this));
         menuBar.add(MenuFactory.createEditMenu(this));
-        menuBar.add(MenuFactory.createOperationsMenu(this));
+//        menuBar.add(MenuFactory.createOperationsMenu(this));
         setJMenuBar(menuBar);
     }
 
@@ -327,5 +342,86 @@ public class MainFrame extends JFrame {
 
         horizontalProjectionPanel.updateProjection(Projections.horizontal(image, threshold, objectIsDark));
         verticalProjectionPanel.updateProjection(Projections.vertical(image, threshold, objectIsDark));
+    }
+
+    private JPanel createIrisDetectionPanel() {
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBorder(BorderFactory.createTitledBorder("Proces segmentacji oka"));
+        panel.setBackground(UIConstants.LIGHT_GRAY);
+
+        JButton btnGray = new JButton("1. Przekształć do szarości");
+        btnGray.setAlignmentX(Component.CENTER_ALIGNMENT);
+        btnGray.addActionListener(e -> {
+            if(!validateImageLoaded()) return;
+
+            applyOperation(new GrayScaleAverageOperation());
+        });
+
+        JPanel pnlPupil = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        pnlPupil.setBackground(UIConstants.LIGHT_GRAY);
+        pnlPupil.add(new JLabel("X_P (Źrenica):"));
+
+        JPanel pnlIris = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        pnlIris.setBackground(UIConstants.LIGHT_GRAY);
+        pnlIris.add(new JLabel("X_I (Tęczówka):"));
+
+
+        SpinnerModel xpModel = new SpinnerNumberModel(2.0, 0.1, 10.0, 0.1);
+        JSpinner spinnerXp = new JSpinner(xpModel);
+        pnlPupil.add(spinnerXp);
+
+        SpinnerModel xiModel = new SpinnerNumberModel(2.0, 0.1, 10.0, 0.1);
+        JSpinner spinnerXi = new JSpinner(xiModel);
+        pnlIris.add(spinnerXi);
+
+        JButton btnBinPupil = new JButton("2. Binaryzacja Źrenicy");
+        btnBinPupil.setAlignmentX(Component.CENTER_ALIGNMENT);
+        btnBinPupil.addActionListener(e -> {
+            if(!validateImageLoaded()) return;
+
+            ImageMatrix currentImage = editorService.getCurrent();
+            double p = IrisAnalyzer.calculateAverageBrightness(currentImage);
+            double xpValue = (Double) spinnerXp.getValue();
+
+            int ppTreshold = (int) (p/xpValue);
+
+            applyOperation(new BinarizationOperation(ppTreshold));
+
+        });
+
+        JButton btnMorphPupil = new JButton("3. Morfologia");
+        btnMorphPupil.setAlignmentX(Component.CENTER_ALIGNMENT);
+        btnMorphPupil.addActionListener(e -> {
+            // TODO: wywołanie OpeningOperation / ClosingOperation
+        });
+
+
+        JButton btnFindCenter = new JButton("4. Znajdź środek i promień");
+        btnFindCenter.setAlignmentX(Component.CENTER_ALIGNMENT);
+        btnFindCenter.addActionListener(e -> {
+            // TODO: znajdywanie środka źrenicy
+        });
+
+
+        JButton btnUnwrap = new JButton("5. Rozwiń do prostokąta (Daugman)");
+        btnUnwrap.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+
+        panel.add(Box.createVerticalStrut(5));
+        panel.add(btnGray);
+        panel.add(Box.createVerticalStrut(5));
+        panel.add(pnlPupil);
+        panel.add(pnlIris);
+        panel.add(btnBinPupil);
+        panel.add(Box.createVerticalStrut(5));
+        panel.add(btnMorphPupil);
+        panel.add(Box.createVerticalStrut(5));
+        panel.add(btnFindCenter);
+        panel.add(Box.createVerticalStrut(5));
+        panel.add(btnUnwrap);
+        panel.add(Box.createVerticalStrut(5));
+
+        return panel;
     }
 }
