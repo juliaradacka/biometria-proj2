@@ -1,9 +1,12 @@
 package biometria.gui;
 
-import biometria.iris.IrisAnalyzer;
+import biometria.iris.IrisSegmentationState;
+import biometria.iris.MorphologyParams;
+import biometria.iris.operations.IrisBinarization;
+import biometria.iris.operations.PupilBinarization;
 import biometria.model.ImageMatrix;
 import biometria.operations.ImageOperation;
-import biometria.operations.point.BinarizationOperation;
+import biometria.operations.morphology.*;
 import biometria.operations.point.grayscale.GrayScaleAverageOperation;
 import biometria.service.EditorService;
 
@@ -19,6 +22,9 @@ public class MainFrame extends JFrame {
     private final ImagePanel imagePanel;
     private final ImagePanel unwrappedIrisPanel;
     private final FileHandler fileHandler;
+
+    // stan segmentacji: maski itp.
+    private final IrisSegmentationState irisState = new IrisSegmentationState();
 
     private SwingWorker<ImageMatrix, Void> previewWorker;
     private volatile int pendingPreviewValue;
@@ -63,11 +69,6 @@ public class MainFrame extends JFrame {
         sidePanel.setBackground(LIGHT_GRAY);
         sidePanel.setPreferredSize(new Dimension(300, 600));
 
-//        histogramContainer = new JPanel(new BorderLayout());
-//        histogramContainer.setBackground(LIGHT_GRAY);
-//        histogramContainer.setBorder(BorderFactory.createTitledBorder("Histogram"));
-//        histogramContainer.setAlignmentX(Component.LEFT_ALIGNMENT);
-
         projectionsContainer = new JPanel();
         projectionsContainer.setLayout(new BoxLayout(projectionsContainer, BoxLayout.Y_AXIS));
         projectionsContainer.setBackground(LIGHT_GRAY);
@@ -100,19 +101,72 @@ public class MainFrame extends JFrame {
         objectDarkRadio.addActionListener(e -> updateProjectionsPanel());
         objectBrightRadio.addActionListener(e -> updateProjectionsPanel());
 
-        JPanel rightTop = new JPanel(new BorderLayout(0,10));
-//        rightTop.setLayout(new BoxLayout(rightTop, BoxLayout.Y_AXIS));
+        JPanel rightTop = new JPanel(new BorderLayout(0, 10));
         rightTop.setBackground(LIGHT_GRAY);
 
-        rightTop.add(createIrisDetectionPanel(), BorderLayout.NORTH);
+        rightTop.add(new IrisSegmentationPanel(
+                // 1) grayscale baza (przez applyOperation)
+                () -> {
+                    if (!validateImageLoaded()) return;
+
+                    applyOperation(new GrayScaleAverageOperation());
+
+                    irisState.setBaseGray(editorService.getCurrent().copy());
+                    irisState.setPupilMask(null);
+                    irisState.setIrisMask(null);
+                },
+
+                // 2a) pupil mask
+                (xp) -> {
+                    if (!validateImageLoaded()) return;
+                    if (irisState.getBaseGray() == null) {
+                        JOptionPane.showMessageDialog(this, "Najpierw krok 1 (baza szarości).");
+                        return;
+                    }
+
+                    ImageMatrix mask = new PupilBinarization(xp).apply(irisState.getBaseGray().copy());
+                    irisState.setPupilMask(mask);
+
+                    imagePanel.setImage(mask);
+                    updateProjections(mask);
+                },
+
+                // 2b) iris mask
+                (xi) -> {
+                    if (!validateImageLoaded()) return;
+                    if (irisState.getBaseGray() == null) {
+                        JOptionPane.showMessageDialog(this, "Najpierw krok 1 (baza szarości).");
+                        return;
+                    }
+
+                    ImageMatrix mask = new IrisBinarization(xi).apply(irisState.getBaseGray().copy());
+                    irisState.setIrisMask(mask);
+
+                    imagePanel.setImage(mask);
+                    updateProjections(mask);
+                },
+
+                // 3a) morfologia źrenicy + największa składowa
+                () -> {
+                    if (irisState.getPupilMask() == null) {
+                        JOptionPane.showMessageDialog(this, "Najpierw policz maskę źrenicy (2a).");
+                        return;
+                    }
+
+                    ImageMatrix cleaned = cleanupPupilMask(irisState.getPupilMask());
+
+                    irisState.setPupilMask(cleaned);
+                    imagePanel.setImage(cleaned);
+                    updateProjections(cleaned);
+                }
+        ), BorderLayout.NORTH);
+
         rightTop.add(Box.createVerticalStrut(10));
         rightTop.add(projectionsContainer, BorderLayout.CENTER);
 
         sidePanel.add(rightTop, BorderLayout.NORTH);
 
-//        JScrollPane imageScrollPane = new JScrollPane(imagePanel);
-//        imageScrollPane.setPreferredSize(new Dimension(800, 500));
-        imagePanel.setPreferredSize(new Dimension(800,500));
+        imagePanel.setPreferredSize(new Dimension(800, 500));
         unwrappedIrisPanel.setPreferredSize(new Dimension(800, 150));
 
         JPanel bottomContainer = new JPanel(new BorderLayout());
@@ -137,17 +191,60 @@ public class MainFrame extends JFrame {
         updateProjectionsPanel();
     }
 
+    private ImageMatrix cleanupPupilMask(ImageMatrix mask) {
+        // - closing: zalewa odblask/dziury
+        // - opening: usuwa drobne śmieci
+        // - largest component: usuwa rzęsy
+        // - small closing: wygładza brzeg
+
+        final int CLOSING_SIZE = 3;
+        final StructuringElementShape CLOSING_SHAPE = StructuringElementShape.ELLIPSE;
+        final int CLOSING_TIMES = 1;
+
+        final int OPENING_SIZE = 3;
+        final StructuringElementShape OPENING_SHAPE = StructuringElementShape.ELLIPSE;
+        final int OPENING_TIMES = 1;
+
+        final int FINAL_CLOSING_SIZE = 3;
+        final StructuringElementShape FINAL_CLOSING_SHAPE = StructuringElementShape.ELLIPSE;
+        final int FINAL_CLOSING_TIMES = 1;
+
+        ImageMatrix result = mask.copy();
+
+        // 1) Closing
+        result = new RepeatOperation(new ClosingOperation(CLOSING_SIZE, CLOSING_SHAPE), CLOSING_TIMES)
+                .apply(result);
+
+        // 2) Opening
+        result = new RepeatOperation(new OpeningOperation(OPENING_SIZE, OPENING_SHAPE), OPENING_TIMES)
+                .apply(result);
+
+        // 3) Największa czarna składowa
+        result = new LargestBlackComponentOperation().apply(result);
+
+        // 4) Domknięcie po wycięciu
+        result = new RepeatOperation(new ClosingOperation(FINAL_CLOSING_SIZE, FINAL_CLOSING_SHAPE), FINAL_CLOSING_TIMES)
+                .apply(result);
+
+        return result;
+    }
+
     private void initMenu() {
         JMenuBar menuBar = new JMenuBar();
         menuBar.add(MenuFactory.createFileMenu(this));
         menuBar.add(MenuFactory.createEditMenu(this));
-//        menuBar.add(MenuFactory.createOperationsMenu(this));
         setJMenuBar(menuBar);
     }
 
     void openFile() {
         if (fileHandler.openFile()) {
             refreshView();
+
+            // po wczytaniu nowego pliku czyścimy stan segmentacji
+            irisState.setBaseGray(null);
+            irisState.setPupilMask(null);
+            irisState.setIrisMask(null);
+
             String fileName = fileHandler.getLastOpenedFileName();
             if (fileName != null) {
                 setTitle("Biometria - " + fileName);
@@ -162,16 +259,29 @@ public class MainFrame extends JFrame {
     void undo() {
         editorService.undo();
         refreshView();
+
+        // undo/redo/reset zmienia bazę -> maski robią się nieaktualne
+        irisState.setBaseGray(null);
+        irisState.setPupilMask(null);
+        irisState.setIrisMask(null);
     }
 
     void redo() {
         editorService.redo();
         refreshView();
+
+        irisState.setBaseGray(null);
+        irisState.setPupilMask(null);
+        irisState.setIrisMask(null);
     }
 
     void reset() {
         editorService.resetToOriginal();
         refreshView();
+
+        irisState.setBaseGray(null);
+        irisState.setPupilMask(null);
+        irisState.setIrisMask(null);
     }
 
     void applyOperation(ImageOperation operation) {
@@ -223,7 +333,6 @@ public class MainFrame extends JFrame {
         menu.add(item);
     }
 
-
     private void startPreviewWorker(Function<Integer, ImageOperation> operationFactory) {
         if (previewWorker != null && !previewWorker.isDone()) {
             previewWorker.cancel(true);
@@ -234,7 +343,7 @@ public class MainFrame extends JFrame {
         previewWorker = new SwingWorker<>() {
             @Override
             protected ImageMatrix doInBackground() {
-                ImageMatrix base = editorService.getCurrent().copy(); // zawsze ostatni zatwierdzony stan
+                ImageMatrix base = editorService.getCurrent().copy();
                 return operationFactory.apply(value).apply(base);
             }
 
@@ -342,86 +451,5 @@ public class MainFrame extends JFrame {
 
         horizontalProjectionPanel.updateProjection(Projections.horizontal(image, threshold, objectIsDark));
         verticalProjectionPanel.updateProjection(Projections.vertical(image, threshold, objectIsDark));
-    }
-
-    private JPanel createIrisDetectionPanel() {
-        JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBorder(BorderFactory.createTitledBorder("Proces segmentacji oka"));
-        panel.setBackground(UIConstants.LIGHT_GRAY);
-
-        JButton btnGray = new JButton("1. Przekształć do szarości");
-        btnGray.setAlignmentX(Component.CENTER_ALIGNMENT);
-        btnGray.addActionListener(e -> {
-            if(!validateImageLoaded()) return;
-
-            applyOperation(new GrayScaleAverageOperation());
-        });
-
-        JPanel pnlPupil = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        pnlPupil.setBackground(UIConstants.LIGHT_GRAY);
-        pnlPupil.add(new JLabel("X_P (Źrenica):"));
-
-        JPanel pnlIris = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        pnlIris.setBackground(UIConstants.LIGHT_GRAY);
-        pnlIris.add(new JLabel("X_I (Tęczówka):"));
-
-
-        SpinnerModel xpModel = new SpinnerNumberModel(2.0, 0.1, 10.0, 0.1);
-        JSpinner spinnerXp = new JSpinner(xpModel);
-        pnlPupil.add(spinnerXp);
-
-        SpinnerModel xiModel = new SpinnerNumberModel(2.0, 0.1, 10.0, 0.1);
-        JSpinner spinnerXi = new JSpinner(xiModel);
-        pnlIris.add(spinnerXi);
-
-        JButton btnBinPupil = new JButton("2. Binaryzacja Źrenicy");
-        btnBinPupil.setAlignmentX(Component.CENTER_ALIGNMENT);
-        btnBinPupil.addActionListener(e -> {
-            if(!validateImageLoaded()) return;
-
-            ImageMatrix currentImage = editorService.getCurrent();
-            double p = IrisAnalyzer.calculateAverageBrightness(currentImage);
-            double xpValue = (Double) spinnerXp.getValue();
-
-            int ppTreshold = (int) (p/xpValue);
-
-            applyOperation(new BinarizationOperation(ppTreshold));
-
-        });
-
-        JButton btnMorphPupil = new JButton("3. Morfologia");
-        btnMorphPupil.setAlignmentX(Component.CENTER_ALIGNMENT);
-        btnMorphPupil.addActionListener(e -> {
-            // TODO: wywołanie OpeningOperation / ClosingOperation
-        });
-
-
-        JButton btnFindCenter = new JButton("4. Znajdź środek i promień");
-        btnFindCenter.setAlignmentX(Component.CENTER_ALIGNMENT);
-        btnFindCenter.addActionListener(e -> {
-            // TODO: znajdywanie środka źrenicy
-        });
-
-
-        JButton btnUnwrap = new JButton("5. Rozwiń do prostokąta (Daugman)");
-        btnUnwrap.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-
-        panel.add(Box.createVerticalStrut(5));
-        panel.add(btnGray);
-        panel.add(Box.createVerticalStrut(5));
-        panel.add(pnlPupil);
-        panel.add(pnlIris);
-        panel.add(btnBinPupil);
-        panel.add(Box.createVerticalStrut(5));
-        panel.add(btnMorphPupil);
-        panel.add(Box.createVerticalStrut(5));
-        panel.add(btnFindCenter);
-        panel.add(Box.createVerticalStrut(5));
-        panel.add(btnUnwrap);
-        panel.add(Box.createVerticalStrut(5));
-
-        return panel;
     }
 }
