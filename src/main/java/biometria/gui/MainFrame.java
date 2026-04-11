@@ -1,18 +1,16 @@
 package biometria.gui;
 
 import biometria.iris.IrisSegmentationState;
-import biometria.iris.MorphologyParams;
 import biometria.iris.operations.IrisBinarization;
 import biometria.iris.operations.PupilBinarization;
+import biometria.iris.operations.PupilMaskCleanupOperation;
 import biometria.model.ImageMatrix;
 import biometria.operations.ImageOperation;
-import biometria.operations.morphology.*;
 import biometria.operations.point.grayscale.GrayScaleAverageOperation;
 import biometria.service.EditorService;
 
 import javax.swing.*;
 import java.awt.*;
-import java.util.function.Function;
 
 import static biometria.gui.UIConstants.*;
 
@@ -23,7 +21,6 @@ public class MainFrame extends JFrame {
     private final ImagePanel unwrappedIrisPanel;
     private final FileHandler fileHandler;
 
-    // stan segmentacji: maski itp.
     private final IrisSegmentationState irisState = new IrisSegmentationState();
 
     private SwingWorker<ImageMatrix, Void> previewWorker;
@@ -146,14 +143,15 @@ public class MainFrame extends JFrame {
                     updateProjections(mask);
                 },
 
-                // 3a) morfologia źrenicy + największa składowa
+                // 3a) morfologia źrenicy (cleanup)
                 () -> {
                     if (irisState.getPupilMask() == null) {
                         JOptionPane.showMessageDialog(this, "Najpierw policz maskę źrenicy (2a).");
                         return;
                     }
 
-                    ImageMatrix cleaned = cleanupPupilMask(irisState.getPupilMask());
+                    ImageMatrix cleaned = new PupilMaskCleanupOperation()
+                            .apply(irisState.getPupilMask());
 
                     irisState.setPupilMask(cleaned);
                     imagePanel.setImage(cleaned);
@@ -191,44 +189,6 @@ public class MainFrame extends JFrame {
         updateProjectionsPanel();
     }
 
-    private ImageMatrix cleanupPupilMask(ImageMatrix mask) {
-        // - closing: zalewa odblask/dziury
-        // - opening: usuwa drobne śmieci
-        // - largest component: usuwa rzęsy
-        // - small closing: wygładza brzeg
-
-        final int CLOSING_SIZE = 3;
-        final StructuringElementShape CLOSING_SHAPE = StructuringElementShape.ELLIPSE;
-        final int CLOSING_TIMES = 1;
-
-        final int OPENING_SIZE = 3;
-        final StructuringElementShape OPENING_SHAPE = StructuringElementShape.ELLIPSE;
-        final int OPENING_TIMES = 1;
-
-        final int FINAL_CLOSING_SIZE = 3;
-        final StructuringElementShape FINAL_CLOSING_SHAPE = StructuringElementShape.ELLIPSE;
-        final int FINAL_CLOSING_TIMES = 1;
-
-        ImageMatrix result = mask.copy();
-
-        // 1) Closing
-        result = new RepeatOperation(new ClosingOperation(CLOSING_SIZE, CLOSING_SHAPE), CLOSING_TIMES)
-                .apply(result);
-
-        // 2) Opening
-        result = new RepeatOperation(new OpeningOperation(OPENING_SIZE, OPENING_SHAPE), OPENING_TIMES)
-                .apply(result);
-
-        // 3) Największa czarna składowa
-        result = new LargestBlackComponentOperation().apply(result);
-
-        // 4) Domknięcie po wycięciu
-        result = new RepeatOperation(new ClosingOperation(FINAL_CLOSING_SIZE, FINAL_CLOSING_SHAPE), FINAL_CLOSING_TIMES)
-                .apply(result);
-
-        return result;
-    }
-
     private void initMenu() {
         JMenuBar menuBar = new JMenuBar();
         menuBar.add(MenuFactory.createFileMenu(this));
@@ -259,8 +219,6 @@ public class MainFrame extends JFrame {
     void undo() {
         editorService.undo();
         refreshView();
-
-        // undo/redo/reset zmienia bazę -> maski robią się nieaktualne
         irisState.setBaseGray(null);
         irisState.setPupilMask(null);
         irisState.setIrisMask(null);
@@ -269,7 +227,6 @@ public class MainFrame extends JFrame {
     void redo() {
         editorService.redo();
         refreshView();
-
         irisState.setBaseGray(null);
         irisState.setPupilMask(null);
         irisState.setIrisMask(null);
@@ -278,7 +235,6 @@ public class MainFrame extends JFrame {
     void reset() {
         editorService.resetToOriginal();
         refreshView();
-
         irisState.setBaseGray(null);
         irisState.setPupilMask(null);
         irisState.setIrisMask(null);
@@ -288,85 +244,6 @@ public class MainFrame extends JFrame {
         if (!validateImageLoaded()) return;
         editorService.applyOperation(operation);
         refreshView();
-    }
-
-    void createParametricOperationItem(
-            JMenu menu,
-            String name,
-            String description,
-            int min,
-            int max,
-            int initial,
-            Function<Integer, ImageOperation> operationFactory
-    ) {
-        JMenuItem item = new JMenuItem(name);
-        item.addActionListener(e -> {
-            if (!validateImageLoaded()) return;
-
-            final javax.swing.Timer localPreviewTimer =
-                    new javax.swing.Timer(60, ev -> startPreviewWorker(operationFactory));
-            localPreviewTimer.setRepeats(false);
-
-            Integer value = ParameterDialog.showSliderDialog(
-                    this,
-                    name,
-                    description,
-                    min, max, initial,
-                    (currentValue) -> {
-                        pendingPreviewValue = currentValue;
-                        localPreviewTimer.restart();
-                    }
-            );
-
-            localPreviewTimer.stop();
-            if (previewWorker != null && !previewWorker.isDone()) {
-                previewWorker.cancel(true);
-            }
-
-            if (value != null) {
-                applyOperation(operationFactory.apply(value));
-            } else {
-                refreshView();
-            }
-        });
-
-        menu.add(item);
-    }
-
-    private void startPreviewWorker(Function<Integer, ImageOperation> operationFactory) {
-        if (previewWorker != null && !previewWorker.isDone()) {
-            previewWorker.cancel(true);
-        }
-
-        final int value = pendingPreviewValue;
-
-        previewWorker = new SwingWorker<>() {
-            @Override
-            protected ImageMatrix doInBackground() {
-                ImageMatrix base = editorService.getCurrent().copy();
-                return operationFactory.apply(value).apply(base);
-            }
-
-            @Override
-            protected void done() {
-                if (isCancelled()) return;
-
-                try {
-                    ImageMatrix preview = get();
-                    imagePanel.setImage(preview);
-
-                    if (currentHistogramPanel != null) {
-                        currentHistogramPanel.updateHistogram(preview);
-                    }
-
-                    updateProjections(preview);
-
-                } catch (Exception ex) {
-                }
-            }
-        };
-
-        previewWorker.execute();
     }
 
     boolean validateImageLoaded() {

@@ -1,8 +1,5 @@
 package biometria.gui;
 
-import biometria.iris.MorphologyParams;
-import biometria.operations.morphology.StructuringElementShape;
-
 import javax.swing.*;
 import java.awt.*;
 import java.util.function.Consumer;
