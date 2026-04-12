@@ -1,6 +1,7 @@
 package biometria.gui;
 
 import biometria.iris.IrisSegmentationState;
+import biometria.iris.PupilCenterEstimator;
 import biometria.iris.operations.IrisBinarization;
 import biometria.iris.operations.PupilBinarization;
 import biometria.iris.operations.PupilMaskCleanupOperation;
@@ -41,6 +42,9 @@ public class MainFrame extends JFrame {
     private JSpinner projectionThresholdSpinner;
     private JRadioButton objectDarkRadio;
     private JRadioButton objectBrightRadio;
+
+    // Overlay controls (zawsze widoczne)
+    private JCheckBox showPupilCircleCheckBox;
 
     private static final int PROJECTION_THRESHOLD_MIN = 0;
     private static final int PROJECTION_THRESHOLD_MAX = 255;
@@ -98,6 +102,17 @@ public class MainFrame extends JFrame {
         objectDarkRadio.addActionListener(e -> updateProjectionsPanel());
         objectBrightRadio.addActionListener(e -> updateProjectionsPanel());
 
+        // --- NOWY PANEL: Overlay (zawsze widoczny) ---
+        JPanel overlayControls = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
+        overlayControls.setBackground(LIGHT_GRAY);
+        overlayControls.setBorder(BorderFactory.createTitledBorder("Overlay"));
+
+        showPupilCircleCheckBox = new JCheckBox("Pokaż granice źrenicy");
+        showPupilCircleCheckBox.setBackground(LIGHT_GRAY);
+        showPupilCircleCheckBox.addActionListener(e -> updatePupilOverlay());
+
+        overlayControls.add(showPupilCircleCheckBox);
+
         JPanel rightTop = new JPanel(new BorderLayout(0, 10));
         rightTop.setBackground(LIGHT_GRAY);
 
@@ -111,6 +126,9 @@ public class MainFrame extends JFrame {
                     irisState.setBaseGray(editorService.getCurrent().copy());
                     irisState.setPupilMask(null);
                     irisState.setIrisMask(null);
+
+                    imagePanel.setCircleOverlay(false, 0, 0, 0);
+                    showPupilCircleCheckBox.setSelected(false);
                 },
 
                 // 2a) pupil mask
@@ -126,6 +144,8 @@ public class MainFrame extends JFrame {
 
                     imagePanel.setImage(mask);
                     updateProjections(mask);
+
+                    updatePupilOverlay();
                 },
 
                 // 2b) iris mask
@@ -156,11 +176,20 @@ public class MainFrame extends JFrame {
                     irisState.setPupilMask(cleaned);
                     imagePanel.setImage(cleaned);
                     updateProjections(cleaned);
+
+                    updatePupilOverlay();
                 }
         ), BorderLayout.NORTH);
 
-        rightTop.add(Box.createVerticalStrut(10));
-        rightTop.add(projectionsContainer, BorderLayout.CENTER);
+        // overlay panel pod panelem segmentacji
+        JPanel rightMid = new JPanel();
+        rightMid.setLayout(new BoxLayout(rightMid, BoxLayout.Y_AXIS));
+        rightMid.setBackground(LIGHT_GRAY);
+        rightMid.add(overlayControls);
+        rightMid.add(Box.createVerticalStrut(10));
+        rightMid.add(projectionsContainer);
+
+        rightTop.add(rightMid, BorderLayout.CENTER);
 
         sidePanel.add(rightTop, BorderLayout.NORTH);
 
@@ -196,14 +225,53 @@ public class MainFrame extends JFrame {
         setJMenuBar(menuBar);
     }
 
+    private void updatePupilOverlay() {
+        boolean enabled = (showPupilCircleCheckBox != null && showPupilCircleCheckBox.isSelected());
+
+        if (!enabled) {
+            imagePanel.setCircleOverlay(false, 0, 0, 0);
+            return;
+        }
+
+        if (!validateImageLoaded()) {
+            imagePanel.setCircleOverlay(false, 0, 0, 0);
+            return;
+        }
+
+        if (irisState.getPupilMask() == null) {
+            JOptionPane.showMessageDialog(this, "Najpierw policz maskę źrenicy (2a) i ewentualnie morfologię (3a).");
+            showPupilCircleCheckBox.setSelected(false);
+            imagePanel.setCircleOverlay(false, 0, 0, 0);
+            return;
+        }
+
+        double[] est = PupilCenterEstimator.estimateCenterAndRadius(irisState.getPupilMask());
+        if (est == null) {
+            JOptionPane.showMessageDialog(this, "Nie udało się wyznaczyć środka/promienia z projekcji.");
+            showPupilCircleCheckBox.setSelected(false);
+            imagePanel.setCircleOverlay(false, 0, 0, 0);
+            return;
+        }
+
+        int cx = (int) Math.round(est[0]);
+        int cy = (int) Math.round(est[1]);
+        double r = est[2];
+
+        // rysowanie na kopii obrazu wejściowego (kolorowego), a nie na masce
+        imagePanel.setImage(editorService.getCurrent());
+        imagePanel.setCircleOverlay(true, cx, cy, r);
+    }
+
     void openFile() {
         if (fileHandler.openFile()) {
             refreshView();
 
-            // po wczytaniu nowego pliku czyścimy stan segmentacji
             irisState.setBaseGray(null);
             irisState.setPupilMask(null);
             irisState.setIrisMask(null);
+
+            imagePanel.setCircleOverlay(false, 0, 0, 0);
+            if (showPupilCircleCheckBox != null) showPupilCircleCheckBox.setSelected(false);
 
             String fileName = fileHandler.getLastOpenedFileName();
             if (fileName != null) {
@@ -222,6 +290,9 @@ public class MainFrame extends JFrame {
         irisState.setBaseGray(null);
         irisState.setPupilMask(null);
         irisState.setIrisMask(null);
+
+        imagePanel.setCircleOverlay(false, 0, 0, 0);
+        if (showPupilCircleCheckBox != null) showPupilCircleCheckBox.setSelected(false);
     }
 
     void redo() {
@@ -230,6 +301,9 @@ public class MainFrame extends JFrame {
         irisState.setBaseGray(null);
         irisState.setPupilMask(null);
         irisState.setIrisMask(null);
+
+        imagePanel.setCircleOverlay(false, 0, 0, 0);
+        if (showPupilCircleCheckBox != null) showPupilCircleCheckBox.setSelected(false);
     }
 
     void reset() {
@@ -238,6 +312,9 @@ public class MainFrame extends JFrame {
         irisState.setBaseGray(null);
         irisState.setPupilMask(null);
         irisState.setIrisMask(null);
+
+        imagePanel.setCircleOverlay(false, 0, 0, 0);
+        if (showPupilCircleCheckBox != null) showPupilCircleCheckBox.setSelected(false);
     }
 
     void applyOperation(ImageOperation operation) {
@@ -259,6 +336,9 @@ public class MainFrame extends JFrame {
 
     void refreshView() {
         imagePanel.setImage(editorService.getCurrent());
+        imagePanel.setCircleOverlay(false, 0, 0, 0);
+        if (showPupilCircleCheckBox != null) showPupilCircleCheckBox.setSelected(false);
+
         updateHistogram();
         updateProjectionsPanel();
     }
