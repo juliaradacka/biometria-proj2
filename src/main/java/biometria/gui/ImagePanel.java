@@ -16,6 +16,10 @@ public class ImagePanel extends JPanel {
     private int circleCx = 0;
     private int circleCy = 0;
     private double circleR = 0;
+    private boolean showOverlay = false;
+    private int overlayCx, overlayCy;
+    private double overlayRadiusPupil;
+    private double overlayRadiusIris;
 
     public ImagePanel() {
         setBackground(LIGHT_GRAY);
@@ -29,6 +33,15 @@ public class ImagePanel extends JPanel {
             this.image = null;
         }
         revalidate();
+        repaint();
+    }
+
+    public void setEyeOverlay(boolean show, int cx, int cy, double rPupil, double rIris) {
+        this.showOverlay = show;
+        this.overlayCx = cx;
+        this.overlayCy = cy;
+        this.overlayRadiusPupil = rPupil;
+        this.overlayRadiusIris = rIris;
         repaint();
     }
 
@@ -61,7 +74,8 @@ public class ImagePanel extends JPanel {
 
         g.drawImage(image, x0, y0, drawW, drawH, null);
 
-        if (showCircle && circleR > 0) {
+        // ---------------- STARY KOD (Tylko Źrenica) ----------------
+        if (showCircle && circleR > 0 && !showOverlay) {
             Graphics2D g2 = (Graphics2D) g.create();
             try {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
@@ -78,5 +92,37 @@ public class ImagePanel extends JPanel {
                 g2.dispose();
             }
         }
+
+        // ---------------- NOWY KOD (Źrenica + Tęczówka) ----------------
+        if (showOverlay) {
+            Graphics2D g2d = (Graphics2D) g.create();
+            try {
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2d.setStroke(new BasicStroke(2.0f));
+
+                int scaledCx = (int) Math.round(overlayCx * scale) + x0;
+                int scaledCy = (int) Math.round(overlayCy * scale) + y0;
+                int scaledRPupil = (int) Math.round(overlayRadiusPupil * scale);
+                int scaledRIris = (int) Math.round(overlayRadiusIris * scale);
+
+                // 1. Rysujemy małą źrenicę (Czerwona)
+                g2d.setColor(Color.RED);
+                if (scaledRPupil > 0) {
+                    g2d.drawOval(scaledCx - scaledRPupil, scaledCy - scaledRPupil, scaledRPupil * 2, scaledRPupil * 2);
+                }
+
+                // Środek oka (Czerwona kropka)
+                g2d.fillOval(scaledCx - 2, scaledCy - 2, 4, 4);
+
+                // 2. Rysujemy dużą tęczówkę (Niebieska)
+                if (scaledRIris > 0) {
+                    g2d.setColor(Color.BLUE);
+                    g2d.drawOval(scaledCx - scaledRIris, scaledCy - scaledRIris, scaledRIris * 2, scaledRIris * 2);
+                }
+            } finally {
+                g2d.dispose();
+            }
+        }
+
     }
 }
