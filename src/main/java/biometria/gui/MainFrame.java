@@ -3,6 +3,7 @@ package biometria.gui;
 import biometria.iris.IrisSegmentationState;
 import biometria.iris.PupilCenterEstimator;
 import biometria.iris.operations.IrisBinarization;
+import biometria.iris.operations.IrisMaskCleanupOperation;
 import biometria.iris.operations.PupilBinarization;
 import biometria.iris.operations.PupilMaskCleanupOperation;
 import biometria.model.ImageMatrix;
@@ -178,6 +179,49 @@ public class MainFrame extends JFrame {
                     updateProjections(cleaned);
 
                     updatePupilOverlay();
+                },
+                // 3b) morfologia tęczówki
+                () -> {
+                    if (irisState.getIrisMask() == null) {
+                        JOptionPane.showMessageDialog(this, "Najpierw policz maskę tęczówki (2b).");
+                        return;
+                    }
+
+                    ImageMatrix cleaned = new IrisMaskCleanupOperation()
+                            .apply(irisState.getIrisMask());
+
+                    irisState.setIrisMask(cleaned);
+                    imagePanel.setImage(cleaned);
+
+                    // Pokazujemy wyczyszczoną maskę i jej projekcje
+                    updateProjections(cleaned);
+                },
+                // NOWE: 5) Rozwinięcie Daugmana
+                () -> {
+                    if (irisState.getPupilMask() == null || irisState.getIrisMask() == null) {
+                        JOptionPane.showMessageDialog(this, "Musisz wyliczyć maski źrenicy (3a) i tęczówki (3b)!");
+                        return;
+                    }
+
+                    // 1. Zbieramy dane o źrenicy
+                    double[] pupilEst = biometria.iris.PupilCenterEstimator.estimateCenterAndRadius(irisState.getPupilMask());
+                    if (pupilEst == null) return;
+
+                    int cx = (int) Math.round(pupilEst[0]);
+                    int cy = (int) Math.round(pupilEst[1]);
+                    double rPupil = pupilEst[2];
+
+                    // 2. Zbieramy promień tęczówki
+                    double rIris = biometria.iris.IrisRadiusEstimator.estimateIrisRadius(irisState.getIrisMask(), cx, cy);
+
+                    // 3. Rozwijamy oryginał (kolorowy/szary), a NIE maskę!
+                    // Używamy editorService.getCurrent() czyli zdjęcia bez nałożonych czarnych plam
+                    ImageMatrix unwrapped = biometria.iris.IrisUnwrapper.unwrap(
+                            editorService.getCurrent(), cx, cy, rPupil, rIris
+                    );
+
+                    // 4. Wyświetlamy wynik na tym dolnym panelu, który przygotowałyśmy dzisiaj rano!
+                    unwrappedIrisPanel.setImage(unwrapped);
                 }
         ), BorderLayout.NORTH);
 
@@ -228,38 +272,35 @@ public class MainFrame extends JFrame {
     private void updatePupilOverlay() {
         boolean enabled = (showPupilCircleCheckBox != null && showPupilCircleCheckBox.isSelected());
 
-        if (!enabled) {
-            imagePanel.setCircleOverlay(false, 0, 0, 0);
-            return;
-        }
-
-        if (!validateImageLoaded()) {
-            imagePanel.setCircleOverlay(false, 0, 0, 0);
+        if (!enabled || !validateImageLoaded()) {
+            imagePanel.setEyeOverlay(false, 0, 0, 0, 0); // <--- ZMIANA
             return;
         }
 
         if (irisState.getPupilMask() == null) {
-            JOptionPane.showMessageDialog(this, "Najpierw policz maskę źrenicy (2a) i ewentualnie morfologię (3a).");
+            JOptionPane.showMessageDialog(this, "Najpierw policz maskę źrenicy (2a).");
             showPupilCircleCheckBox.setSelected(false);
-            imagePanel.setCircleOverlay(false, 0, 0, 0);
+            imagePanel.setEyeOverlay(false, 0, 0, 0, 0); // <--- ZMIANA
             return;
         }
 
+        // 1. Liczymy źrenicę (od koleżanki)
         double[] est = PupilCenterEstimator.estimateCenterAndRadius(irisState.getPupilMask());
-        if (est == null) {
-            JOptionPane.showMessageDialog(this, "Nie udało się wyznaczyć środka/promienia z projekcji.");
-            showPupilCircleCheckBox.setSelected(false);
-            imagePanel.setCircleOverlay(false, 0, 0, 0);
-            return;
-        }
+        if (est == null) return;
 
         int cx = (int) Math.round(est[0]);
         int cy = (int) Math.round(est[1]);
-        double r = est[2];
+        double rPupil = est[2];
 
-        // rysowanie na kopii obrazu wejściowego (kolorowego), a nie na masce
+        // 2. Liczymy tęczówkę (Twoja nowa klasa!)
+        double rIris = 0;
+        if (irisState.getIrisMask() != null) {
+            rIris = biometria.iris.IrisRadiusEstimator.estimateIrisRadius(irisState.getIrisMask(), cx, cy);
+        }
+
+        // 3. Rysujemy na oryginale
         imagePanel.setImage(editorService.getCurrent());
-        imagePanel.setCircleOverlay(true, cx, cy, r);
+        imagePanel.setEyeOverlay(true, cx, cy, rPupil, rIris); // <--- ZMIANA
     }
 
     void openFile() {
