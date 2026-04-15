@@ -46,13 +46,11 @@ public class PupilMaskCleanupOperation implements ImageOperation {
         int w = cleaned.getWidth();
         int h = cleaned.getHeight();
 
-//        int[] c = centerOfBlackMass(cleaned);
         ImageMatrix seedCore = lastNonEmptyErosion(cleaned);
         int[] c = centerOfBlackMass(seedCore);
 
         ImageMatrix marker = diskMarker(w, h, c[0], c[1], MARKER_RADIUS);
 
-        // klucz: marker MUSI leżeć na obiekcie -> przytnij do cleaned
         marker = andMasksBlackObject(marker, cleaned);
 
         // fallback: jeśli marker pusty, spróbuj środka bbox + mniejszy promień
