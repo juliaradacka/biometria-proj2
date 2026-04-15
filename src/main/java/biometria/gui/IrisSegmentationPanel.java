@@ -50,11 +50,11 @@ public class IrisSegmentationPanel extends JPanel {
         pnlIris.setBackground(LIGHT_GRAY);
         pnlIris.add(new JLabel("X_I (Tęczówka):"));
 
-        SpinnerModel xpModel = new SpinnerNumberModel(3.7, 0.1, 10.0, 0.05);
+        SpinnerModel xpModel = new SpinnerNumberModel(3.9, 0.1, 10.0, 0.05);
         JSpinner spinnerXp = new JSpinner(xpModel);
         pnlPupil.add(spinnerXp);
 
-        SpinnerModel xiModel = new SpinnerNumberModel(1.7, 0.1, 10.0, 0.05);
+        SpinnerModel xiModel = new SpinnerNumberModel(1.6, 0.1, 10.0, 0.05);
         JSpinner spinnerXi = new JSpinner(xiModel);
         pnlIris.add(spinnerXi);
 

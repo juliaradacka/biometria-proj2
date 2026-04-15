@@ -2,114 +2,83 @@ package biometria.iris.operations;
 
 import biometria.model.ImageMatrix;
 import biometria.operations.ImageOperation;
-import biometria.operations.morphology.DilatationOperation;
+import biometria.operations.morphology.ClosingOperation;
 import biometria.operations.morphology.OpeningOperation;
-import biometria.operations.morphology.StructuringElementShape;
 import biometria.operations.morphology.RepeatOperation;
-import biometria.util.ColorUtil;
+import biometria.operations.morphology.StructuringElementShape;
 
 public class IrisMaskCleanupOperation implements ImageOperation {
 
-    private static final int BLACK = 0;
-    private static final int WHITE = 255;
-
-
-    private static final int OPENING_SIZE = 5;
     private static final StructuringElementShape SHAPE = StructuringElementShape.ELLIPSE;
 
+    private static final double ROI_SCALE_FROM_PUPIL = 3.0;
+    private static final int ROI_MIN_MARGIN_PX = 20;
 
-    private static final int RECONSTRUCTION_SE_SIZE = 3;
-    private static final int RECONSTRUCTION_MAX_ITERATIONS = 500;
+    private static final int OPENING1_SIZE = 9;
+    private static final int OPENING1_TIMES = 1;
+
+    private static final int CLOSING1_SIZE = 17;
+    private static final int CLOSING1_TIMES = 1;
+
+    private static final int CLOSING2_SIZE = 7;
+    private static final int CLOSING2_TIMES = 1;
+
+    private static final int OPENING2_SIZE = 5;
+    private static final int OPENING2_TIMES = 1;
+
+    private final ImageMatrix pupilMaskClean;
+
+    public IrisMaskCleanupOperation(ImageMatrix pupilMaskClean) {
+        if (pupilMaskClean == null) throw new IllegalArgumentException("pupilMaskClean == null");
+        this.pupilMaskClean = pupilMaskClean;
+    }
 
     @Override
-    public ImageMatrix apply(ImageMatrix input) {
-        if (input == null) throw new IllegalArgumentException("Input image cannot be null");
+    public ImageMatrix apply(ImageMatrix irisMask) {
+        if (irisMask == null) throw new IllegalArgumentException("irisMask == null");
 
-
-        ImageMatrix disconnected = new RepeatOperation(
-                new OpeningOperation(OPENING_SIZE, SHAPE), 1
-        ).apply(input.copy());
-
-
-        int[] center = centerOfBlackMass(disconnected);
-
-
-        ImageMatrix marker = diskMarker(disconnected.getWidth(), disconnected.getHeight(), center[0], center[1], 10);
-
-
-        return reconstructByDilatation(marker, disconnected);
-    }
-
-
-
-    private int[] centerOfBlackMass(ImageMatrix mask) {
-        long sx = 0, sy = 0, count = 0;
-        int w = mask.getWidth(), h = mask.getHeight();
-
-        for (int y = 0; y < h; y++) {
-            for (int x = 0; x < w; x++) {
-                if (ColorUtil.getRed(mask.getARGB(x, y)) == BLACK) {
-                    sx += x; sy += y; count++;
-                }
-            }
+        int[] bb = BinaryMaskOps.blackBoundingBox(pupilMaskClean);
+        if (bb == null) {
+            // fallback
+            ImageMatrix out = irisMask.copy();
+            out = new RepeatOperation(new OpeningOperation(OPENING1_SIZE, SHAPE), OPENING1_TIMES).apply(out);
+            out = new RepeatOperation(new ClosingOperation(CLOSING1_SIZE, SHAPE), CLOSING1_TIMES).apply(out);
+            out = new RepeatOperation(new OpeningOperation(OPENING2_SIZE, SHAPE), OPENING2_TIMES).apply(out);
+            return out;
         }
-        if (count == 0) return new int[]{w / 2, h / 2};
-        return new int[]{(int) (sx / count), (int) (sy / count)};
-    }
 
-    private ImageMatrix diskMarker(int w, int h, int cx, int cy, int r) {
-        int blackArgb = ColorUtil.toARGB(255, BLACK, BLACK, BLACK);
-        int whiteArgb = ColorUtil.toARGB(255, WHITE, WHITE, WHITE);
-        ImageMatrix out = new ImageMatrix(w, h);
+        int minX = bb[0], minY = bb[1], maxX = bb[2], maxY = bb[3];
+        int bw = (maxX - minX + 1);
+        int bh = (maxY - minY + 1);
 
-        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) out.setARGB(x, y, whiteArgb);
+        int cx = (minX + maxX) / 2;
+        int cy = (minY + maxY) / 2;
 
-        int r2 = r * r;
-        for (int y = Math.max(0, cy - r); y <= Math.min(h - 1, cy + r); y++) {
-            for (int x = Math.max(0, cx - r); x <= Math.min(w - 1, cx + r); x++) {
-                if ((x - cx) * (x - cx) + (y - cy) * (y - cy) <= r2) {
-                    out.setARGB(x, y, blackArgb);
-                }
-            }
-        }
-        return out;
-    }
+        double rBox = 0.5 * Math.max(bw, bh);
+        int margin = (int) Math.round(Math.max(ROI_MIN_MARGIN_PX, ROI_SCALE_FROM_PUPIL * rBox));
 
-    private ImageMatrix reconstructByDilatation(ImageMatrix marker, ImageMatrix mask) {
-        ImageMatrix prev = marker.copy();
-        for (int i = 0; i < RECONSTRUCTION_MAX_ITERATIONS; i++) {
-            ImageMatrix dil = new DilatationOperation(RECONSTRUCTION_SE_SIZE, SHAPE).apply(prev);
-            ImageMatrix next = andMasksBlackObject(dil, mask);
+        int x0 = cx - margin, x1 = cx + margin;
+        int y0 = cy - margin, y1 = cy + margin;
 
-            if (equalsBinary(prev, next)) return next;
-            prev = next;
-        }
-        return prev;
-    }
+        ImageMatrix roiIris = BinaryMaskOps.keepOnlyRoi(irisMask.copy(), x0, y0, x1, y1);
 
-    private boolean equalsBinary(ImageMatrix a, ImageMatrix b) {
-        int w = a.getWidth(), h = a.getHeight();
-        if (b.getWidth() != w || b.getHeight() != h) return false;
-        for (int y = 0; y < h; y++) {
-            for (int x = 0; x < w; x++) {
-                if (ColorUtil.getRed(a.getARGB(x, y)) != ColorUtil.getRed(b.getARGB(x, y))) return false;
-            }
-        }
-        return true;
-    }
+        // 1) Na czas czyszczenia usuń pupil z iris (żeby closing nie sklejał syfu do środka)
+        ImageMatrix ringOnly = BinaryMaskOps.subtractBlack(roiIris, pupilMaskClean);
 
-    private ImageMatrix andMasksBlackObject(ImageMatrix a, ImageMatrix b) {
-        int w = a.getWidth(), h = a.getHeight();
-        ImageMatrix out = new ImageMatrix(w, h);
-        int blackArgb = ColorUtil.toARGB(255, BLACK, BLACK, BLACK);
-        int whiteArgb = ColorUtil.toARGB(255, WHITE, WHITE, WHITE);
+        // 2) Morfologia na ringOnly
+        ImageMatrix cleanedRing = new RepeatOperation(new OpeningOperation(OPENING1_SIZE, SHAPE), OPENING1_TIMES)
+                .apply(ringOnly);
 
-        for (int y = 0; y < h; y++) {
-            for (int x = 0; x < w; x++) {
-                boolean black = (ColorUtil.getRed(a.getARGB(x, y)) == BLACK) && (ColorUtil.getRed(b.getARGB(x, y)) == BLACK);
-                out.setARGB(x, y, black ? blackArgb : whiteArgb);
-            }
-        }
-        return out;
+        cleanedRing = new RepeatOperation(new ClosingOperation(CLOSING1_SIZE, SHAPE), CLOSING1_TIMES)
+                .apply(cleanedRing);
+
+        cleanedRing = new RepeatOperation(new ClosingOperation(CLOSING2_SIZE, SHAPE), CLOSING2_TIMES)
+                .apply(cleanedRing);
+
+        cleanedRing = new RepeatOperation(new OpeningOperation(OPENING2_SIZE, SHAPE), OPENING2_TIMES)
+                .apply(cleanedRing);
+
+        // 3) Przywróć pupil jako czarny (finalna maska ma pupil+tęczówkę na czarno)
+        return BinaryMaskOps.orBlack(cleanedRing, pupilMaskClean);
     }
 }

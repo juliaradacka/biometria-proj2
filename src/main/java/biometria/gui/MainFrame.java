@@ -127,7 +127,8 @@ public class MainFrame extends JFrame {
                         return;
                     }
 
-                    ImageMatrix cleaned = new IrisMaskCleanupOperation().apply(irisState.getIrisMask());
+                    ImageMatrix cleaned = new IrisMaskCleanupOperation(irisState.getPupilMask())
+                            .apply(irisState.getIrisMask());
                     irisState.setIrisMask(cleaned);
 
                     imagePanel.setImage(cleaned);
