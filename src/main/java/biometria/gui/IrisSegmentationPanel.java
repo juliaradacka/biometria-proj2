@@ -13,8 +13,6 @@ public class IrisSegmentationPanel extends JPanel {
     private final Consumer<Double> onComputeIrisMask;
     private final Runnable onMorphPupil;
     private final Runnable onMorphIris;
-
-    // NOWE: Szósta przegródka dla Daugmana
     private final Runnable onUnwrapIris;
 
     public IrisSegmentationPanel(
@@ -23,14 +21,14 @@ public class IrisSegmentationPanel extends JPanel {
             Consumer<Double> onComputeIrisMask,
             Runnable onMorphPupil,
             Runnable onMorphIris,
-            Runnable onUnwrapIris // <--- Szósty argument
+            Runnable onUnwrapIris
     ) {
         this.onApplyGrayBase = onApplyGrayBase;
         this.onComputePupilMask = onComputePupilMask;
         this.onComputeIrisMask = onComputeIrisMask;
         this.onMorphPupil = onMorphPupil;
         this.onMorphIris = onMorphIris;
-        this.onUnwrapIris = onUnwrapIris; // <--- Zapisujemy
+        this.onUnwrapIris = onUnwrapIris;
 
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setBorder(BorderFactory.createTitledBorder("Proces segmentacji oka"));
@@ -52,7 +50,7 @@ public class IrisSegmentationPanel extends JPanel {
         pnlIris.setBackground(LIGHT_GRAY);
         pnlIris.add(new JLabel("X_I (Tęczówka):"));
 
-        SpinnerModel xpModel = new SpinnerNumberModel(4.0, 0.1, 10.0, 0.05);
+        SpinnerModel xpModel = new SpinnerNumberModel(3.7, 0.1, 10.0, 0.05);
         JSpinner spinnerXp = new JSpinner(xpModel);
         pnlPupil.add(spinnerXp);
 
@@ -79,7 +77,6 @@ public class IrisSegmentationPanel extends JPanel {
         btnMorphIris.addActionListener(e -> onMorphIris.run());
         pnlMorph.add(btnMorphIris);
 
-        // NOWE: Przycisk finałowy
         JButton btnUnwrap = new JButton("5. Rozwiń do prostokąta (Daugman)");
         btnUnwrap.setAlignmentX(Component.CENTER_ALIGNMENT);
         btnUnwrap.addActionListener(e -> onUnwrapIris.run());
