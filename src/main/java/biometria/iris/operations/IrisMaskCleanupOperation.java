@@ -2,10 +2,7 @@ package biometria.iris.operations;
 
 import biometria.model.ImageMatrix;
 import biometria.operations.ImageOperation;
-import biometria.operations.morphology.DilatationOperation;
-import biometria.operations.morphology.OpeningOperation;
-import biometria.operations.morphology.StructuringElementShape;
-import biometria.operations.morphology.RepeatOperation;
+import biometria.operations.morphology.*;
 import biometria.util.ColorUtil;
 
 public class IrisMaskCleanupOperation implements ImageOperation {
@@ -14,7 +11,7 @@ public class IrisMaskCleanupOperation implements ImageOperation {
     private static final int WHITE = 255;
 
 
-    private static final int OPENING_SIZE = 5;
+    private static final int OPENING_SIZE = 11;
     private static final StructuringElementShape SHAPE = StructuringElementShape.ELLIPSE;
 
 
@@ -35,9 +32,10 @@ public class IrisMaskCleanupOperation implements ImageOperation {
 
 
         ImageMatrix marker = diskMarker(disconnected.getWidth(), disconnected.getHeight(), center[0], center[1], 10);
-
-
-        return reconstructByDilatation(marker, disconnected);
+        ImageMatrix reconstructed = reconstructByDilatation(marker, disconnected);
+//        reconstructed = new DilatationOperation(3, StructuringElementShape.ELLIPSE).apply(reconstructed);
+        reconstructed = new ClosingOperation(15, StructuringElementShape.ELLIPSE).apply(reconstructed);
+        return reconstructed;
     }
 
 
