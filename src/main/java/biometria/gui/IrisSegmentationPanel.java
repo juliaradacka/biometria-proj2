@@ -13,7 +13,9 @@ public class IrisSegmentationPanel extends JPanel {
     private final Consumer<Double> onComputeIrisMask;
     private final Runnable onMorphPupil;
     private final Runnable onMorphIris;
+
     private final Runnable onUnwrapIris;
+    private final Runnable onShowIrisCode;
 
     public IrisSegmentationPanel(
             Runnable onApplyGrayBase,
@@ -21,7 +23,8 @@ public class IrisSegmentationPanel extends JPanel {
             Consumer<Double> onComputeIrisMask,
             Runnable onMorphPupil,
             Runnable onMorphIris,
-            Runnable onUnwrapIris
+            Runnable onUnwrapIris,
+            Runnable onShowIrisCode
     ) {
         this.onApplyGrayBase = onApplyGrayBase;
         this.onComputePupilMask = onComputePupilMask;
@@ -29,6 +32,7 @@ public class IrisSegmentationPanel extends JPanel {
         this.onMorphPupil = onMorphPupil;
         this.onMorphIris = onMorphIris;
         this.onUnwrapIris = onUnwrapIris;
+        this.onShowIrisCode = onShowIrisCode;
 
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setBorder(BorderFactory.createTitledBorder("Proces segmentacji oka"));
@@ -81,6 +85,10 @@ public class IrisSegmentationPanel extends JPanel {
         btnUnwrap.setAlignmentX(Component.CENTER_ALIGNMENT);
         btnUnwrap.addActionListener(e -> onUnwrapIris.run());
 
+        JButton btnCode = new JButton("6. Pokaż kod binarny tęczówki"); // new
+        btnCode.setAlignmentX(Component.CENTER_ALIGNMENT);
+        btnCode.addActionListener(e -> onShowIrisCode.run());
+
         add(Box.createVerticalStrut(5));
         add(btnGray);
         add(Box.createVerticalStrut(5));
@@ -92,5 +100,7 @@ public class IrisSegmentationPanel extends JPanel {
         add(pnlMorph);
         add(Box.createVerticalStrut(10));
         add(btnUnwrap);
+        add(Box.createVerticalStrut(5));
+        add(btnCode);
     }
 }
