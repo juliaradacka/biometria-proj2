@@ -4,7 +4,8 @@ import biometria.model.ImageMatrix;
 
 public class IrisUnwrapper {
 
-    private static final int UNWRAPPED_WIDTH = 512;
+    // 360, żeby 1 kolumna = 1 stopień
+    private static final int UNWRAPPED_WIDTH = 360;
     private static final int UNWRAPPED_HEIGHT = 64;
 
     public static ImageMatrix unwrap(ImageMatrix sourceImage, int cx, int cy, double rPupil, double rIris) {

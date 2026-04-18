@@ -29,6 +29,10 @@ public class MainFrame extends JFrame {
     private JPanel sidePanel;
     private JCheckBox showPupilCircleCheckBox;
     private JCheckBox showIrisCircleCheckBox;
+    private JCheckBox showIrisCodeCheckBox;
+
+//    private boolean[] lastCode = null;
+//    private String lastFileName = null;
 
     public MainFrame(EditorService service) {
         this.editorService = service;
@@ -155,6 +159,70 @@ public class MainFrame extends JFrame {
                     );
 
                     unwrappedIrisPanel.setImage(unwrapped);
+                },
+                // 6) kod binarny (bez gabora UI; tylko pokaz)
+                () -> {
+                    if (irisState.getPupilMask() == null || irisState.getIrisMask() == null) {
+                        JOptionPane.showMessageDialog(this, "Musisz wyliczyć maski źrenicy (3a) i tęczówki (3b)!");
+                        return;
+                    }
+
+                    double[] pupilEst = PupilCenterEstimator.estimateCenterAndRadius(irisState.getPupilMask());
+                    if (pupilEst == null) return;
+
+                    int cx = (int) Math.round(pupilEst[0]);
+                    int cy = (int) Math.round(pupilEst[1]);
+                    double rPupil = pupilEst[2];
+
+                    double rIris = biometria.iris.IrisRadiusEstimator.estimateIrisRadius(irisState.getIrisMask(), cx, cy);
+
+                    ImageMatrix unwrapped = biometria.iris.IrisUnwrapper.unwrap(
+                            editorService.getCurrent(), cx, cy, rPupil, rIris
+                    );
+                    if (unwrapped == null) return;
+
+                    double[][] bands = biometria.iris.IrisBandsFromUnwrapped.extract(
+                            unwrapped,
+                            biometria.iris.IrisBandsFromUnwrapped.DEFAULT_BANDS,
+                            biometria.iris.IrisBandsFromUnwrapped.DEFAULT_POINTS
+                    );
+
+                    boolean[] code = biometria.iris.IrisCode.encode(
+                            bands,
+                            1.0 / 16.0,
+                            12
+                    );
+
+                    int ones = 0;
+                    for (boolean bit : code) if (bit) ones++;
+                    double ratio = (double) ones / code.length;
+                    System.out.println("onesRatio=" + ratio + " len=" + code.length);
+
+                    ImageMatrix codeImg = biometria.iris.IrisCodeRenderer.render(
+                            code,
+                            biometria.iris.IrisBandsFromUnwrapped.DEFAULT_BANDS,
+                            biometria.iris.IrisBandsFromUnwrapped.DEFAULT_POINTS,
+                            4
+                    );
+
+                    unwrappedIrisPanel.setImage(codeImg);
+
+//                    // --- TEST: porównanie z poprzednim kodem ---
+//                    if (lastCode != null) {
+//                        double dNoShift = biometria.iris.Hamming.distance(lastCode, code);
+//                        double dShift = biometria.iris.Hamming.minDistanceWithShift(lastCode, code, 8, 128, 8);
+//
+//                        JOptionPane.showMessageDialog(this,
+//                                "Porównanie z poprzednim kodem:\n" +
+//                                        "no shift = " + String.format("%.4f", dNoShift) + "\n" +
+//                                        "min shift (<=8) = " + String.format("%.4f", dShift) + "\n" +
+//                                        (lastFileName != null ? "poprzedni plik: " + lastFileName + "\n" : "")
+//                        );
+//                    }
+//
+//                    // zapamiętaj bieżący jako "poprzedni"
+//                    lastCode = code;
+//                    lastFileName = fileHandler.getLastOpenedFileName(); // jeśli masz; jak null to zostaw
                 }
         ), BorderLayout.NORTH);
 
