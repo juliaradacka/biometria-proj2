@@ -17,10 +17,6 @@ public final class PupilCenterEstimator {
         int h = pupilMask.getHeight();
         if (w <= 0 || h <= 0) return null;
 
-        int[] center = centerOfBlackMass(pupilMask);
-        int cx = center[0];
-        int cy = center[1];
-
         int[] projX = verticalProjectionBlackCount(pupilMask);
         int[] projY = horizontalProjectionBlackCount(pupilMask);
 
@@ -28,9 +24,40 @@ public final class PupilCenterEstimator {
         int maxY = maxValue(projY);
         if (maxX == 0 || maxY == 0) return null;
 
-        int widthX = widthAtThreshold(projX, cx, (int) Math.round(maxX * WIDTH_THRESHOLD_FRACTION));
+        // Środek z projekcji: bierzemy środek plateau maksymalnych wartości
+        int cx = centerIndexOfMaxPlateau(projX);
+        int cy = centerIndexOfMaxPlateau(projY);
+
+        // Fallback, gdyby coś wyszło dziwnie (np. pusta projekcja)
+        if (cx < 0 || cy < 0) {
+            int[] center = centerOfBlackMass(pupilMask);
+            cx = center[0];
+            cy = center[1];
+        }
+
+        int thresholdX = (int) Math.round(maxX * WIDTH_THRESHOLD_FRACTION);
+        int widthX = widthAtThreshold(projX, cx, thresholdX);
         double r = widthX / 2.0;
+
         return new double[]{cx, cy, r};
+    }
+
+    private static int centerIndexOfMaxPlateau(int[] proj) {
+        if (proj == null || proj.length == 0) return -1;
+
+        int max = maxValue(proj);
+        if (max <= 0) return -1;
+
+        int first = -1;
+        int last = -1;
+        for (int i = 0; i < proj.length; i++) {
+            if (proj[i] == max) {
+                if (first < 0) first = i;
+                last = i;
+            }
+        }
+        if (first < 0) return -1;
+        return (first + last) / 2;
     }
 
     private static int[] centerOfBlackMass(ImageMatrix mask) {
