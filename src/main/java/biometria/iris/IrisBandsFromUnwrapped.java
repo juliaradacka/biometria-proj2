@@ -11,17 +11,10 @@ public final class IrisBandsFromUnwrapped {
     public static final int DEFAULT_POINTS = 128;
 
     public static double[][] extract(ImageMatrix unwrapped, int bands, int points) {
-        if (unwrapped == null) throw new IllegalArgumentException("unwrapped == null");
-        if (bands != 8) throw new IllegalArgumentException("this implementation expects bands=8");
-        if (points != 128) throw new IllegalArgumentException("this implementation expects points=128");
-        if (unwrapped.getWidth() != 360) {
-            throw new IllegalArgumentException("unwrap width must be 360 (degrees). got=" + unwrapped.getWidth());
-        }
-
         int w = unwrapped.getWidth();   // 360
         int h = unwrapped.getHeight();  // 64
 
-        int bandHeight = h / 8; // zakładamy 64 -> 8px na pas
+        int bandHeight = h / 8; // zakładamy 64 - 8px na pas
 
         int[] cols1to4 = concat(range(0, 255), range(285, 360));
         int[] cols5to6 = concat(range(0, 57), range(124, 237), range(304, 360));

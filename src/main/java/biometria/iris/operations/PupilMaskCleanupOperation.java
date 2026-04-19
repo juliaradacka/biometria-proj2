@@ -35,7 +35,7 @@ public class PupilMaskCleanupOperation implements ImageOperation {
 
     @Override
     public ImageMatrix apply(ImageMatrix input) {
-        // 1) delikatny preprocessing (nie sklejamy powieki do źrenicy)
+        // 1) preprocessing
         ImageMatrix cleaned = new RepeatOperation(new ClosingOperation(PRE_CLOSING_SIZE, SHAPE), PRE_CLOSING_TIMES)
                 .apply(input.copy());
 
@@ -53,14 +53,12 @@ public class PupilMaskCleanupOperation implements ImageOperation {
 
         marker = andMasksBlackObject(marker, cleaned);
 
-        // fallback: jeśli marker pusty, spróbuj środka bbox + mniejszy promień
         if (!hasAnyBlack(marker)) {
             int[] bb = centerOfBlackBoundingBox(cleaned);
             marker = diskMarker(w, h, bb[0], bb[1], Math.max(2, MARKER_RADIUS / 2));
             marker = andMasksBlackObject(marker, cleaned);
         }
 
-        // jeśli nadal pusto, zwróć input po delikatnym preprocessingu (lepsze niż "biało")
         if (!hasAnyBlack(marker)) {
             return cleaned;
         }
@@ -68,7 +66,7 @@ public class PupilMaskCleanupOperation implements ImageOperation {
         // 3) rekonstrukcja morfologiczna (geodezyjna dylatacja)
         ImageMatrix reconstructed = reconstructByDilatation(marker, cleaned);
 
-        // 4) teraz wypełnianie dziur/odblasku
+        // 4) wypełnianie dziur
         reconstructed = new RepeatOperation(
                 new ClosingOperation(HOLE_FILLING_CLOSING_SIZE, SHAPE),
                 HOLE_FILLING_CLOSING_TIMES
@@ -123,10 +121,6 @@ public class PupilMaskCleanupOperation implements ImageOperation {
         return true;
     }
 
-    /**
-     * AND dla masek binarnych, gdzie obiekt = czarny (0), tło = białe (255).
-     * Wynik jest czarny tylko tam, gdzie oba wejścia mają czarny piksel.
-     */
     private ImageMatrix andMasksBlackObject(ImageMatrix a, ImageMatrix b) {
         int w = a.getWidth();
         int h = a.getHeight();
@@ -203,7 +197,6 @@ public class PupilMaskCleanupOperation implements ImageOperation {
 
         ImageMatrix out = new ImageMatrix(w, h);
 
-        // wypełnij na biało
         for (int y = 0; y < h; y++) {
             for (int x = 0; x < w; x++) {
                 out.setARGB(x, y, whiteArgb);

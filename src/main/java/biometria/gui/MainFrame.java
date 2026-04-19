@@ -138,7 +138,7 @@ public class MainFrame extends JFrame {
                     updateIrisOverlay();
                 },
 
-                // 5) Rozwinięcie Daugmana
+                // 5) rozwinięcie Daugmana
                 () -> {
                     if (irisState.getPupilMask() == null || irisState.getIrisMask() == null) {
                         JOptionPane.showMessageDialog(this, "Musisz wyliczyć maski źrenicy (3a) i tęczówki (3b)!");
@@ -160,7 +160,7 @@ public class MainFrame extends JFrame {
 
                     unwrappedIrisPanel.setImage(unwrapped);
                 },
-                // 6) kod binarny (bez gabora UI; tylko pokaz)
+                // 6) kod binarny
                 () -> {
                     if (irisState.getPupilMask() == null || irisState.getIrisMask() == null) {
                         JOptionPane.showMessageDialog(this, "Musisz wyliczyć maski źrenicy (3a) i tęczówki (3b)!");
@@ -207,7 +207,7 @@ public class MainFrame extends JFrame {
 
                     unwrappedIrisPanel.setImage(codeImg);
 
-//                    // --- TEST: porównanie z poprzednim kodem ---
+//                    // porównanie z poprzednim kodem
 //                    if (lastCode != null) {
 //                        double dNoShift = biometria.iris.Hamming.distance(lastCode, code);
 //                        double dShift = biometria.iris.Hamming.minDistanceWithShift(lastCode, code, 8, 128, 8);
@@ -220,9 +220,9 @@ public class MainFrame extends JFrame {
 //                        );
 //                    }
 //
-//                    // zapamiętaj bieżący jako "poprzedni"
+//                    // zapamiętanie bieżącego kodu jako poprzedni
 //                    lastCode = code;
-//                    lastFileName = fileHandler.getLastOpenedFileName(); // jeśli masz; jak null to zostaw
+//                    lastFileName = fileHandler.getLastOpenedFileName();
                 }
         ), BorderLayout.NORTH);
 
@@ -328,9 +328,7 @@ public class MainFrame extends JFrame {
             return;
         }
 
-        // potrzebujemy środka zawsze (dla iris też), więc źrenica musi być policzona
         if (irisState.getPupilMask() == null) {
-            // jeśli ktoś zaznaczył iris bez pupil, nie rysuj nic i wyłącz iris
             if (showIrisCircleCheckBox != null) showIrisCircleCheckBox.setSelected(false);
             JOptionPane.showMessageDialog(this, "Najpierw policz źrenicę (maska źrenicy), żeby znać środek.");
             imagePanel.setEyeOverlay(false, 0, 0, 0, 0);
@@ -351,7 +349,6 @@ public class MainFrame extends JFrame {
         double rIris = 0.0;
         if (showIris) {
             if (irisState.getIrisMask() == null) {
-                // brak maski iris -> nie rysuj iris
                 rIris = 0.0;
             } else {
                 rIris = biometria.iris.IrisRadiusEstimator.estimateIrisRadius(irisState.getIrisMask(), cx, cy);

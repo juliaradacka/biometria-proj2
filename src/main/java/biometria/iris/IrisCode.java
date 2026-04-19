@@ -45,7 +45,6 @@ public final class IrisCode {
 
         double[] out = new double[n];
         if (std < 1e-9) {
-            // jak pas jest prawie stały, to tylko centruj
             for (int i = 0; i < n; i++) out[i] = x[i] - mean;
         } else {
             for (int i = 0; i < n; i++) out[i] = (x[i] - mean) / std;

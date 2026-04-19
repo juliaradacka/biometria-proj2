@@ -29,9 +29,6 @@ public final class PupilCenterEstimator {
         if (maxX == 0 || maxY == 0) return null;
 
         int widthX = widthAtThreshold(projX, cx, (int) Math.round(maxX * WIDTH_THRESHOLD_FRACTION));
-//        int widthY = widthAtThreshold(projY, cy, (int) Math.round(maxY * WIDTH_THRESHOLD_FRACTION));
-//        double r = 0.25 * (widthX + widthY);
-
         double r = widthX / 2.0;
         return new double[]{cx, cy, r};
     }
