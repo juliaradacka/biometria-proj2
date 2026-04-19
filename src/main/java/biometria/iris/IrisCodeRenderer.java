@@ -3,9 +3,6 @@ package biometria.iris;
 import biometria.model.ImageMatrix;
 import biometria.util.ColorUtil;
 
-/**
- * wizualizacja kodu binarnego jako obraz
- */
 public final class IrisCodeRenderer {
 
     private IrisCodeRenderer() {}

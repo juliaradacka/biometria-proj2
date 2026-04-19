@@ -33,7 +33,6 @@ public class IrisMaskCleanupOperation implements ImageOperation {
 
         ImageMatrix marker = diskMarker(disconnected.getWidth(), disconnected.getHeight(), center[0], center[1], 10);
         ImageMatrix reconstructed = reconstructByDilatation(marker, disconnected);
-//        reconstructed = new DilatationOperation(3, StructuringElementShape.ELLIPSE).apply(reconstructed);
         reconstructed = new ClosingOperation(15, StructuringElementShape.ELLIPSE).apply(reconstructed);
         return reconstructed;
     }

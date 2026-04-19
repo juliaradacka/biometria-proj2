@@ -45,14 +45,6 @@ public class ImagePanel extends JPanel {
         repaint();
     }
 
-    public void setCircleOverlay(boolean enabled, int cx, int cy, double r) {
-        this.showCircle = enabled;
-        this.circleCx = cx;
-        this.circleCy = cy;
-        this.circleR = r;
-        repaint();
-    }
-
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -74,7 +66,6 @@ public class ImagePanel extends JPanel {
 
         g.drawImage(image, x0, y0, drawW, drawH, null);
 
-        // ---------------- STARY KOD (Tylko Źrenica) ----------------
         if (showCircle && circleR > 0 && !showOverlay) {
             Graphics2D g2 = (Graphics2D) g.create();
             try {
@@ -93,7 +84,6 @@ public class ImagePanel extends JPanel {
             }
         }
 
-        // ---------------- NOWY KOD (Źrenica + Tęczówka) ----------------
         if (showOverlay) {
             Graphics2D g2d = (Graphics2D) g.create();
             try {
@@ -105,16 +95,13 @@ public class ImagePanel extends JPanel {
                 int scaledRPupil = (int) Math.round(overlayRadiusPupil * scale);
                 int scaledRIris = (int) Math.round(overlayRadiusIris * scale);
 
-                // 1. Rysujemy małą źrenicę (Czerwona)
                 g2d.setColor(Color.RED);
                 if (scaledRPupil > 0) {
                     g2d.drawOval(scaledCx - scaledRPupil, scaledCy - scaledRPupil, scaledRPupil * 2, scaledRPupil * 2);
                 }
 
-                // Środek oka (Czerwona kropka)
                 g2d.fillOval(scaledCx - 2, scaledCy - 2, 4, 4);
 
-                // 2. Rysujemy dużą tęczówkę (Niebieska)
                 if (scaledRIris > 0) {
                     g2d.setColor(Color.BLUE);
                     g2d.drawOval(scaledCx - scaledRIris, scaledCy - scaledRIris, scaledRIris * 2, scaledRIris * 2);

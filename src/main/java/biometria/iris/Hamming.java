@@ -15,10 +15,6 @@ public final class Hamming {
         return (double) diff / a.length;
     }
 
-    /**
-     * minimalna odległość Hamminga z przesunięciem kątowym
-     * - mamy 2 bity na punkt więc przesuwamy blokami po 2 bity
-     */
     public static double minDistanceWithShift(boolean[] codeA, boolean[] codeB, int bands, int points, int maxShift) {
         int expected = bands * points * 2;
         double best = Double.POSITIVE_INFINITY;

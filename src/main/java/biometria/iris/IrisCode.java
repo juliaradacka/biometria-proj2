@@ -4,11 +4,6 @@ public final class IrisCode {
 
     private IrisCode() {}
 
-    /**
-     * buduje kod binarny z sygnałów pasów (8x128) przez gabora
-     * - 2 bity na punkt: (re>=0), (im>=0)
-     * - pas jest centrowany (zero-mean) i normalizowany (std=1), żeby uniknąć biasu
-     */
     public static boolean[] encode(double[][] bands, double f, int halfWindow) {
         if (bands == null) throw new IllegalArgumentException("bands == null");
         int B = bands.length;
@@ -50,7 +45,6 @@ public final class IrisCode {
 
         double[] out = new double[n];
         if (std < 1e-9) {
-            // jak pas jest prawie stały, to tylko centruj
             for (int i = 0; i < n; i++) out[i] = x[i] - mean;
         } else {
             for (int i = 0; i < n; i++) out[i] = (x[i] - mean) / std;

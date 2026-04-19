@@ -16,7 +16,6 @@ public final class Gabor1D {
      */
     public static Complex responseAt(double[] x, int n0, int halfWindow, double f) {
         // dla mniejszych f -> większe sigma (szersze okno)
-        // minimalnie 1.0 żeby nie było "impulsu"
         double sigma = Math.max(1.0, 0.5 * Math.PI / f);
 
         double re = 0.0;

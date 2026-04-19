@@ -6,18 +6,6 @@ import javax.swing.*;
 
 public class MenuFactory {
 
-    private static final int BRIGHTNESS_MIN = -255;
-    private static final int BRIGHTNESS_MAX = 255;
-    private static final int BRIGHTNESS_DEFAULT = 0;
-
-    private static final int CONTRAST_MIN = -255;
-    private static final int CONTRAST_MAX = 255;
-    private static final int CONTRAST_DEFAULT = 0;
-
-    private static final int BINARIZATION_MIN = 0;
-    private static final int BINARIZATION_MAX = 255;
-    private static final int BINARIZATION_DEFAULT = 128;
-
     public static JMenu createFileMenu(MainFrame frame) {
         JMenu fileMenu = new JMenu("Plik");
 
