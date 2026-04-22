@@ -31,8 +31,8 @@ public class MainFrame extends JFrame {
     private JCheckBox showIrisCircleCheckBox;
     private JCheckBox showIrisCodeCheckBox;
 
-//    private boolean[] lastCode = null;
-//    private String lastFileName = null;
+    private boolean[] lastCode = null;
+    private String lastFileName = null;
 
     public MainFrame(EditorService service) {
         this.editorService = service;
@@ -207,22 +207,20 @@ public class MainFrame extends JFrame {
 
                     unwrappedIrisPanel.setImage(codeImg);
 
-//                    // porównanie z poprzednim kodem
-//                    if (lastCode != null) {
-//                        double dNoShift = biometria.iris.Hamming.distance(lastCode, code);
-//                        double dShift = biometria.iris.Hamming.minDistanceWithShift(lastCode, code, 8, 128, 8);
-//
-//                        JOptionPane.showMessageDialog(this,
-//                                "Porównanie z poprzednim kodem:\n" +
-//                                        "no shift = " + String.format("%.4f", dNoShift) + "\n" +
-//                                        "min shift (<=8) = " + String.format("%.4f", dShift) + "\n" +
-//                                        (lastFileName != null ? "poprzedni plik: " + lastFileName + "\n" : "")
-//                        );
-//                    }
-//
-//                    // zapamiętanie bieżącego kodu jako poprzedni
-//                    lastCode = code;
-//                    lastFileName = fileHandler.getLastOpenedFileName();
+                    // porównanie z poprzednim kodem
+                    if (lastCode != null) {
+                        double dNoShift = biometria.iris.Hamming.distance(lastCode, code);
+
+                        JOptionPane.showMessageDialog(this,
+                                "Porównanie z poprzednim kodem:\n" +
+                                        "Odległośc Hamminga = " + String.format("%.4f", dNoShift) + "\n" +
+                                        (lastFileName != null ? "poprzedni plik: " + lastFileName + "\n" : "")
+                        );
+                    }
+
+                    // zapamiętanie bieżącego kodu jako poprzedni
+                    lastCode = code;
+                    lastFileName = fileHandler.getLastOpenedFileName();
                 }
         ), BorderLayout.NORTH);
 
